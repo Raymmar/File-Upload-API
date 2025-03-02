@@ -1,5 +1,5 @@
 import { images, type Image, type InsertImage } from "@shared/schema";
-import Database from "@replit/database";
+import { Client } from '@replit/object-storage';
 
 export interface IStorage {
   getBucket(): Promise<string>;
@@ -7,19 +7,18 @@ export interface IStorage {
   getFileUrl(bucket: string, filename: string): Promise<string>;
   createImage(image: InsertImage): Promise<Image>;
   getImage(id: number): Promise<Image | undefined>;
-  getFile(filename: string): Promise<{ buffer: string, contentType: string } | undefined>;
   getImages(): Promise<Image[]>;
 }
 
 export class MemStorage implements IStorage {
   private images: Map<number, Image>;
   private currentId: number;
-  private db: Database;
+  private client: Client;
 
   constructor() {
     this.images = new Map();
     this.currentId = 1;
-    this.db = new Database();
+    this.client = new Client();
   }
 
   async getBucket(): Promise<string> {
@@ -27,30 +26,36 @@ export class MemStorage implements IStorage {
   }
 
   async uploadFile(bucket: string, filename: string, buffer: Buffer, contentType: string): Promise<void> {
-    // Store file data in Replit Database
-    const fileData = {
-      buffer: buffer.toString('base64'),
-      contentType
-    };
+    console.log(`Uploading file ${filename} with contentType ${contentType}`);
+    const { ok, error } = await this.client.uploadFromBytes(filename, buffer);
 
-    console.log(`Storing file ${filename} with contentType ${contentType}`);
-    await this.db.set(`file:${filename}`, fileData);
+    if (!ok) {
+      console.error('Upload error:', error);
+      throw new Error('Failed to upload file');
+    }
   }
 
-  async getFile(filename: string): Promise<{ buffer: string, contentType: string } | undefined> {
+  async getFile(filename: string): Promise<{ buffer: Buffer, contentType: string } | undefined> {
     console.log(`Retrieving file ${filename}`);
-    const fileData = await this.db.get(`file:${filename}`);
-    if (!fileData) {
-      console.log(`File ${filename} not found`);
+    const { ok, value: buffer, error } = await this.client.downloadAsBytes(filename);
+
+    if (!ok) {
+      console.error('Download error:', error);
       return undefined;
     }
 
-    console.log(`Found file ${filename} with contentType ${fileData.contentType}`);
-    return fileData as { buffer: string, contentType: string };
+    // For simplicity, we'll determine content type from the filename
+    const contentType = filename.toLowerCase().endsWith('.jpg') || filename.toLowerCase().endsWith('.jpeg') 
+      ? 'image/jpeg' 
+      : filename.toLowerCase().endsWith('.png')
+      ? 'image/png'
+      : 'application/octet-stream';
+
+    return { buffer, contentType };
   }
 
   async getFileUrl(bucket: string, filename: string): Promise<string> {
-    // Generate a URL for accessing the file
+    // The URL will be handled by our API endpoint
     return `/api/files/${filename}`;
   }
 
@@ -58,49 +63,27 @@ export class MemStorage implements IStorage {
     const id = this.currentId++;
     const image: Image = { id, ...insertImage };
     this.images.set(id, image);
-
-    // Store image metadata in Replit Database
-    await this.db.set(`image:${id}`, image);
-
     return image;
   }
 
   async getImage(id: number): Promise<Image | undefined> {
-    // Try to get from memory first
-    if (this.images.has(id)) {
-      return this.images.get(id);
-    }
-
-    // Fall back to database
-    const image = await this.db.get(`image:${id}`);
-    if (image) {
-      this.images.set(id, image as Image);
-      return image as Image;
-    }
-
-    return undefined;
+    return this.images.get(id);
   }
 
   async getImages(): Promise<Image[]> {
     try {
-      // Get all keys from the database
-      const allKeys = await this.db.list();
-      console.log('All keys from database:', allKeys);
+      // List all objects in the bucket
+      const { ok, value: objects, error } = await this.client.list();
 
-      // Convert the result to an array and filter image keys
-      const imageKeys = Object.keys(allKeys as object).filter(key => key.startsWith('image:'));
-      console.log('Filtered image keys:', imageKeys);
-
-      // Fetch all images
-      const images: Image[] = [];
-      for (const key of imageKeys) {
-        const image = await this.db.get(key);
-        if (image) {
-          images.push(image as Image);
-        }
+      if (!ok) {
+        console.error('Error listing objects:', error);
+        return [];
       }
 
+      // Convert objects to images
+      const images = Array.from(this.images.values());
       console.log(`Found ${images.length} images`);
+
       return images;
     } catch (error) {
       console.error('Error fetching images:', error);

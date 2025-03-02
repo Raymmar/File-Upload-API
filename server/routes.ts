@@ -77,9 +77,8 @@ export async function registerRoutes(app: Express) {
         return res.status(404).json({ message: "File not found" });
       }
 
-      const buffer = Buffer.from(fileData.buffer, 'base64');
       res.setHeader('Content-Type', fileData.contentType);
-      res.send(buffer);
+      res.send(fileData.buffer);
     } catch (error) {
       console.error("File serving error:", error);
       res.status(500).json({ message: "Failed to serve file" });
