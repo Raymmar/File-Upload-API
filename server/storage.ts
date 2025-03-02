@@ -27,15 +27,25 @@ export class MemStorage implements IStorage {
 
   async uploadFile(bucket: string, filename: string, buffer: Buffer, contentType: string): Promise<void> {
     // Store file data in Replit Database
-    await this.db.set(`file:${filename}`, {
+    const fileData = {
       buffer: buffer.toString('base64'),
       contentType
-    });
+    };
+
+    console.log(`Storing file ${filename} with contentType ${contentType}`);
+    await this.db.set(`file:${filename}`, fileData);
   }
 
   async getFile(filename: string): Promise<{ buffer: string, contentType: string } | undefined> {
+    console.log(`Retrieving file ${filename}`);
     const fileData = await this.db.get(`file:${filename}`);
-    return fileData as { buffer: string, contentType: string } | undefined;
+    if (!fileData) {
+      console.log(`File ${filename} not found`);
+      return undefined;
+    }
+
+    console.log(`Found file ${filename} with contentType ${fileData.contentType}`);
+    return fileData as { buffer: string, contentType: string };
   }
 
   async getFileUrl(bucket: string, filename: string): Promise<string> {
