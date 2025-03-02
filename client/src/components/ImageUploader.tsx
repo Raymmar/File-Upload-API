@@ -1,18 +1,18 @@
 import { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 import { Upload, X } from "lucide-react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { ACCEPTED_IMAGE_TYPES, MAX_FILE_SIZE } from "@shared/schema";
-import { apiRequest } from "@/lib/queryClient";
 
 export default function ImageUploader() {
   const [preview, setPreview] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
@@ -20,7 +20,7 @@ export default function ImageUploader() {
       formData.append("file", file);
 
       const xhr = new XMLHttpRequest();
-      
+
       // Track upload progress
       xhr.upload.onprogress = (event) => {
         const progress = (event.loaded / event.total) * 100;
@@ -44,6 +44,8 @@ export default function ImageUploader() {
       });
       setPreview(null);
       setUploadProgress(0);
+      // Invalidate images query to refresh the gallery
+      queryClient.invalidateQueries({ queryKey: ["/api/images"] });
     },
     onError: () => {
       toast({
@@ -57,7 +59,7 @@ export default function ImageUploader() {
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
-    
+
     if (!file) return;
 
     if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
@@ -102,7 +104,7 @@ export default function ImageUploader() {
           ${isDragActive ? "border-primary bg-primary/5" : "border-muted-foreground/25"}`}
       >
         <input {...getInputProps()} />
-        
+
         {preview ? (
           <div className="relative">
             <img

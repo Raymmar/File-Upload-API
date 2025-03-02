@@ -8,6 +8,7 @@ export interface IStorage {
   createImage(image: InsertImage): Promise<Image>;
   getImage(id: number): Promise<Image | undefined>;
   getFile(filename: string): Promise<{ buffer: string, contentType: string } | undefined>;
+  getImages(): Promise<Image[]>;
 }
 
 export class MemStorage implements IStorage {
@@ -78,6 +79,31 @@ export class MemStorage implements IStorage {
     }
 
     return undefined;
+  }
+
+  async getImages(): Promise<Image[]> {
+    try {
+      // Get all keys from the database
+      const allKeys = await this.db.list();
+
+      // Filter only image: keys
+      const imageKeys = allKeys.filter(key => key.startsWith('image:'));
+
+      // Fetch all images
+      const images: Image[] = [];
+      for (const key of imageKeys) {
+        const image = await this.db.get(key);
+        if (image) {
+          images.push(image as Image);
+        }
+      }
+
+      console.log(`Found ${images.length} images`);
+      return images;
+    } catch (error) {
+      console.error('Error fetching images:', error);
+      return [];
+    }
   }
 }
 

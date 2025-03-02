@@ -23,6 +23,17 @@ const upload = multer({
 });
 
 export async function registerRoutes(app: Express) {
+  // Get all images
+  app.get("/api/images", async (_req, res) => {
+    try {
+      const images = await storage.getImages();
+      res.json(images);
+    } catch (error) {
+      console.error("Failed to get images:", error);
+      res.status(500).json({ message: "Failed to get images" });
+    }
+  });
+
   app.post("/api/upload", upload.single("file"), async (req: MulterRequest, res) => {
     try {
       if (!req.file) {
