@@ -65,18 +65,7 @@ export class MemStorage implements IStorage {
     try {
       console.log(`[Storage] Getting URL for file: ${filename}`);
       const sanitizedFilename = sanitizeFilename(filename);
-
-      // Get Replit environment variables
-      const replId = process.env.REPL_ID;
-      const replSlug = process.env.REPL_SLUG;
-
-      if (!replId || !replSlug) {
-        throw new Error('Missing required Replit environment variables');
-      }
-
-      // Construct the public URL using Replit's Object Storage URL format
-      // Use the format that directly accesses the object storage
-      const url = `https://${replSlug}.${replId}.repl.co/files/${encodeURIComponent(sanitizedFilename)}`;
+      const url = this.client.getPublicUrl(sanitizedFilename);
       console.log(`[Storage] Generated URL: ${url}`);
       return url;
     } catch (error) {
@@ -125,7 +114,7 @@ export class MemStorage implements IStorage {
       const images = await Promise.all(
         objects.map(async (obj, index) => {
           const filename = obj.name;
-          const url = await this.getFileUrl('default-bucket', filename);
+          const url = this.client.getPublicUrl(filename);
 
           // Determine content type from filename
           const contentType = filename.toLowerCase().endsWith('.png') 

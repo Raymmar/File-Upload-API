@@ -1,0 +1,102 @@
+# Object Storage Typescript SDK
+
+> Learn how to use the @replit/object-storage TypeScript client library to manage objects in Replit's Object Storage service.
+
+## Overview
+
+The `@replit/object-storage` package offers a TypeScript client library to interact with Object Storage. It provides a quick and efficient way to integrate Object Storage into Node.js applications. While it's feasible to utilize Object Storage via the [Google Node.js Client for Cloud Storage](https://cloud.google.com/nodejs/reference/storage/latest) or the [Google Cloud Storage JSON API](https://cloud.google.com/storage/json_api), the Replit client library streamlines application development with Object Storage by eliminating the need for custom authentication logic and Bucket configuration.
+
+<Note>
+  This package is intended for server-side applications only. It leverages Node.js features and native filesystem functionalities, making it incompatible with browser environments.
+</Note>
+
+## Installation
+
+The Object Storage Typescript SDK is available via the `@replit/object-storage` package in [NPM](https://www.npmjs.com/package/@replit/object-storage).
+
+You can install the Object Storage package by using one of the following methods:
+
+### One-click Setup
+
+Navigate to your Workspace, select **+** to add a new tab, and search for **Object Storage**. In the Object Storage pane, use the one-click setup **Install @replit/object-storage package** button to install the package.
+
+<Frame>
+  <img src="https://mintlify.s3.us-west-1.amazonaws.com/replit/images/hosting/object-storage/install-javascript.png" alt="Install @replit/object-storage package" />
+</Frame>
+
+### Using npm
+
+You can install the package via the shell using npm:
+
+```
+npm install @replit/object-storage
+```
+
+### Using yarn
+
+```
+yarn add @replit/object-storage
+```
+
+The library is compatible with [Bun](https://replit.com/@replit/Bun?v=1), [Deno](https://replit.com/@replit/Deno?v=1), and [NodeJS](https://replit.com/@replit/Nodejs?v=1) (Node version 14+).
+
+## Quick Start
+
+Follow this guide to set up the Object Storage TypeScript SDK and perform basic operations like adding, retrieving, listing, and deleting Objects in your Bucket.
+
+### Setup a Client
+
+Create a new client instance without any parameters:
+
+```typescript
+import { Client } from '@replit/object-storage';
+const client = new Client();
+```
+
+### Add an Object
+
+Upload an Object by providing its name and contents:
+
+```typescript
+const { ok, error } = await client.uploadFromText('file.txt', "Hello World!")
+if (!ok) {
+    // ... handle the error ...
+}
+```
+
+### Get an Object
+
+Retrieve an Object's contents as text:
+
+```typescript
+const { ok, value, error } = await client.downloadAsText('file.txt');
+if (!ok) {
+    // ... handle the error ...
+}
+console.log(value);
+// > "Hello World!"
+```
+
+### List the Objects in the Bucket
+
+List all Objects within the Bucket:
+
+```typescript
+const { ok, value, error } = await client.list();
+if (!ok) {
+    // ... handle the error ...
+}
+console.log(value);
+// > [{ name: 'file.txt' }]
+```
+
+### Delete an Object
+
+Delete an Object from the Bucket:
+
+```typescript
+const { ok, error } = await client.delete("file.txt");
+if (!ok) {
+    // ... handle the error ...
+}
+```
