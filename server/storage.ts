@@ -85,9 +85,11 @@ export class MemStorage implements IStorage {
     try {
       // Get all keys from the database
       const allKeys = await this.db.list();
+      console.log('All keys from database:', allKeys);
 
-      // Filter only image: keys
-      const imageKeys = allKeys.filter(key => key.startsWith('image:'));
+      // Convert the result to an array and filter image keys
+      const imageKeys = Object.keys(allKeys as object).filter(key => key.startsWith('image:'));
+      console.log('Filtered image keys:', imageKeys);
 
       // Fetch all images
       const images: Image[] = [];
