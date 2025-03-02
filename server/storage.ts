@@ -65,7 +65,12 @@ export class MemStorage implements IStorage {
     try {
       console.log(`[Storage] Getting URL for file: ${filename}`);
       const sanitizedFilename = sanitizeFilename(filename);
-      const url = this.client.getPublicUrl(sanitizedFilename);
+
+      // Get the domain for Replit Object Storage
+      const storageDomain = process.env.REPLIT_OBJECT_STORAGE_URL || 'storage.replit.com';
+
+      // Construct the URL using the storage domain
+      const url = `https://${storageDomain}/${sanitizedFilename}`;
       console.log(`[Storage] Generated URL: ${url}`);
       return url;
     } catch (error) {
@@ -114,7 +119,8 @@ export class MemStorage implements IStorage {
       const images = await Promise.all(
         objects.map(async (obj, index) => {
           const filename = obj.name;
-          const url = this.client.getPublicUrl(filename);
+          const storageDomain = process.env.REPLIT_OBJECT_STORAGE_URL || 'storage.replit.com';
+          const url = `https://${storageDomain}/${filename}`;
 
           // Determine content type from filename
           const contentType = filename.toLowerCase().endsWith('.png') 
