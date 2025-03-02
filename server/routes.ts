@@ -83,6 +83,30 @@ export async function registerRoutes(app: Express) {
     }
   });
 
+  // Serve files through our Express server
+  app.get("/files/:filename", async (req, res) => {
+    try {
+      console.log(`[API] Serving file: ${req.params.filename}`);
+      const { ok, value: buffer, error } = await storage.client.downloadAsBytes(req.params.filename);
+
+      if (!ok || !buffer) {
+        console.error('[API] File not found:', error);
+        return res.status(404).json({ message: "File not found" });
+      }
+
+      // Set appropriate content type
+      const contentType = req.params.filename.toLowerCase().endsWith('.png') 
+        ? 'image/png' 
+        : 'image/jpeg';
+
+      res.setHeader('Content-Type', contentType);
+      res.send(buffer);
+    } catch (error) {
+      console.error("[API] Error serving file:", error);
+      res.status(500).json({ message: "Failed to serve file" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

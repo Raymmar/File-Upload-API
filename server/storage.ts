@@ -120,7 +120,34 @@ export class MemStorage implements IStorage {
       }
 
       console.log('[Storage] Objects in storage:', objects);
-      const images = Array.from(this.images.values());
+
+      // Convert the storage objects to Image records
+      const images = await Promise.all(
+        objects.map(async (obj, index) => {
+          const filename = obj.name;
+          const url = await this.getFileUrl('default-bucket', filename);
+
+          // Determine content type from filename
+          const contentType = filename.toLowerCase().endsWith('.png') 
+            ? 'image/png' 
+            : 'image/jpeg';
+
+          // Create an Image record if it doesn't exist
+          if (!this.images.has(index + 1)) {
+            const image: Image = {
+              id: index + 1,
+              filename,
+              url,
+              contentType,
+              size: 0 // We don't have the actual size from the list operation
+            };
+            this.images.set(index + 1, image);
+          }
+
+          return this.images.get(index + 1)!;
+        })
+      );
+
       console.log(`[Storage] Returning ${images.length} images`);
       return images;
     } catch (error) {
