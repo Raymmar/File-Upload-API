@@ -75,6 +75,7 @@ export class MemStorage implements IStorage {
       }
 
       // Construct the public URL using Replit's Object Storage URL format
+      // Use the format that directly accesses the object storage
       const url = `https://${replSlug}.${replId}.repl.co/files/${encodeURIComponent(sanitizedFilename)}`;
       console.log(`[Storage] Generated URL: ${url}`);
       return url;
