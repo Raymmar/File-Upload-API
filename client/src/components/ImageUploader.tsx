@@ -30,19 +30,26 @@ export default function ImageUploader() {
       // Wrap XHR in a promise
       const response = await new Promise((resolve, reject) => {
         xhr.open("POST", "/api/upload");
-        xhr.onload = () => resolve(xhr.response);
+        xhr.onload = () => {
+          if (xhr.status === 200) {
+            resolve(JSON.parse(xhr.response));
+          } else {
+            reject(xhr.statusText);
+          }
+        };
         xhr.onerror = () => reject(xhr.statusText);
         xhr.send(formData);
       });
 
       return response;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast({
         title: "Success",
         description: "Image uploaded successfully",
       });
-      setPreview(null);
+      // Use the URL from the server response for preview
+      setPreview(data.url);
       setUploadProgress(0);
       // Invalidate images query to refresh the gallery
       queryClient.invalidateQueries({ queryKey: ["/api/images"] });
@@ -80,6 +87,7 @@ export default function ImageUploader() {
       return;
     }
 
+    // Create temporary preview URL
     const objectUrl = URL.createObjectURL(file);
     setPreview(objectUrl);
     uploadMutation.mutate(file);
