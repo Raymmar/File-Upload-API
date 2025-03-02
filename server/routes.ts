@@ -55,7 +55,7 @@ export async function registerRoutes(app: Express) {
       const bucket = await storage.getBucket();
       console.log(`[API] Using bucket: ${bucket}`);
 
-      // Generate a unique filename
+      // Generate a unique filename with timestamp
       const filename = `${Date.now()}-${file.originalname}`;
       console.log(`[API] Generated filename: ${filename}`);
 

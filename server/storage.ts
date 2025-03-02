@@ -1,6 +1,19 @@
 import { images, type Image, type InsertImage } from "@shared/schema";
 import { Client } from '@replit/object-storage';
 
+function sanitizeFilename(filename: string): string {
+  // Remove special characters and spaces, replace with hyphens
+  const sanitized = filename
+    .toLowerCase()
+    .replace(/[^a-z0-9.]/g, '-')
+    .replace(/-+/g, '-'); // Replace multiple consecutive hyphens with a single one
+
+  const [name, ext] = sanitized.split('.');
+  // Ensure we don't exceed reasonable filename length
+  const truncatedName = name.slice(0, 50);
+  return `${truncatedName}.${ext}`;
+}
+
 export interface IStorage {
   getBucket(): Promise<string>;
   uploadFile(bucket: string, filename: string, buffer: Buffer, contentType: string): Promise<void>;
@@ -28,18 +41,20 @@ export class MemStorage implements IStorage {
 
   async uploadFile(bucket: string, filename: string, buffer: Buffer, contentType: string): Promise<void> {
     try {
+      const sanitizedFilename = sanitizeFilename(filename);
       console.log(`[Storage] Starting upload for file: ${filename}`);
+      console.log(`[Storage] Sanitized filename: ${sanitizedFilename}`);
       console.log(`[Storage] File size: ${buffer.length} bytes`);
       console.log(`[Storage] Content type: ${contentType}`);
 
-      const { ok, error } = await this.client.uploadFromBytes(filename, buffer);
+      const { ok, error } = await this.client.uploadFromBytes(sanitizedFilename, buffer);
 
       if (!ok) {
         console.error('[Storage] Upload failed:', error);
         throw new Error(`Failed to upload file: ${error}`);
       }
 
-      console.log(`[Storage] Upload successful for file: ${filename}`);
+      console.log(`[Storage] Upload successful for file: ${sanitizedFilename}`);
     } catch (error) {
       console.error('[Storage] Upload error:', error);
       throw error;
@@ -49,6 +64,7 @@ export class MemStorage implements IStorage {
   async getFileUrl(bucket: string, filename: string): Promise<string> {
     try {
       console.log(`[Storage] Getting URL for file: ${filename}`);
+      const sanitizedFilename = sanitizeFilename(filename);
 
       // Get Replit environment variables
       const replId = process.env.REPL_ID;
@@ -59,7 +75,7 @@ export class MemStorage implements IStorage {
       }
 
       // Construct the public URL using Replit's Object Storage URL format
-      const url = `https://${replSlug}.${replId}.repl.co/files/${encodeURIComponent(filename)}`;
+      const url = `https://${replSlug}.${replId}.repl.co/files/${encodeURIComponent(sanitizedFilename)}`;
       console.log(`[Storage] Generated URL: ${url}`);
       return url;
     } catch (error) {
@@ -74,7 +90,7 @@ export class MemStorage implements IStorage {
       const id = this.currentId++;
       const image: Image = { 
         id, 
-        filename: insertImage.filename,
+        filename: sanitizeFilename(insertImage.filename),
         url: insertImage.url,
         contentType: insertImage.contentType,
         size: insertImage.size
