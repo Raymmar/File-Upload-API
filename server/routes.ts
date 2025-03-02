@@ -69,23 +69,6 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  // Add endpoint to serve files
-  app.get("/api/files/:filename", async (req, res) => {
-    try {
-      const filename = decodeURIComponent(req.params.filename);
-      const fileData = await storage.getFile(filename);
-      if (!fileData) {
-        return res.status(404).json({ message: "File not found" });
-      }
-
-      res.setHeader('Content-Type', fileData.contentType);
-      res.send(fileData.buffer);
-    } catch (error) {
-      console.error("File serving error:", error);
-      res.status(500).json({ message: "Failed to serve file" });
-    }
-  });
-
   const httpServer = createServer(app);
   return httpServer;
 }

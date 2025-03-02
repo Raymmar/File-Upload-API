@@ -35,28 +35,9 @@ export class MemStorage implements IStorage {
     }
   }
 
-  async getFile(filename: string): Promise<{ buffer: Buffer, contentType: string } | undefined> {
-    console.log(`Retrieving file ${filename}`);
-    const { ok, value: buffer, error } = await this.client.downloadAsBytes(filename);
-
-    if (!ok) {
-      console.error('Download error:', error);
-      return undefined;
-    }
-
-    // For simplicity, we'll determine content type from the filename
-    const contentType = filename.toLowerCase().endsWith('.jpg') || filename.toLowerCase().endsWith('.jpeg') 
-      ? 'image/jpeg' 
-      : filename.toLowerCase().endsWith('.png')
-      ? 'image/png'
-      : 'application/octet-stream';
-
-    return { buffer, contentType };
-  }
-
   async getFileUrl(bucket: string, filename: string): Promise<string> {
-    // The URL will be handled by our API endpoint
-    return `/api/files/${encodeURIComponent(filename)}`;
+    // Get a public URL for the file from the Object Storage client
+    return this.client.getPublicUrl(filename);
   }
 
   async createImage(insertImage: InsertImage): Promise<Image> {
