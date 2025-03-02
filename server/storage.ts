@@ -48,12 +48,22 @@ export class MemStorage implements IStorage {
 
   async getFileUrl(bucket: string, filename: string): Promise<string> {
     try {
-      console.log(`[Storage] Getting public URL for file: ${filename}`);
-      const url = this.client.getPublicUrl(filename);
+      console.log(`[Storage] Getting URL for file: ${filename}`);
+
+      // Get Replit environment variables
+      const replId = process.env.REPL_ID;
+      const replSlug = process.env.REPL_SLUG;
+
+      if (!replId || !replSlug) {
+        throw new Error('Missing required Replit environment variables');
+      }
+
+      // Construct the public URL using Replit's Object Storage URL format
+      const url = `https://${replSlug}.${replId}.repl.co/files/${encodeURIComponent(filename)}`;
       console.log(`[Storage] Generated URL: ${url}`);
       return url;
     } catch (error) {
-      console.error('[Storage] Error getting public URL:', error);
+      console.error('[Storage] Error getting URL:', error);
       throw error;
     }
   }
@@ -62,7 +72,13 @@ export class MemStorage implements IStorage {
     try {
       console.log('[Storage] Creating image record:', insertImage);
       const id = this.currentId++;
-      const image: Image = { id, ...insertImage };
+      const image: Image = { 
+        id, 
+        filename: insertImage.filename,
+        url: insertImage.url,
+        contentType: insertImage.contentType,
+        size: insertImage.size
+      };
       this.images.set(id, image);
       console.log('[Storage] Image record created:', image);
       return image;
