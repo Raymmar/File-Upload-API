@@ -19,6 +19,7 @@ export class MemStorage implements IStorage {
     this.images = new Map();
     this.currentId = 1;
     this.client = new Client();
+    console.log('Storage initialized with Object Storage client');
   }
 
   async getBucket(): Promise<string> {
@@ -26,25 +27,49 @@ export class MemStorage implements IStorage {
   }
 
   async uploadFile(bucket: string, filename: string, buffer: Buffer, contentType: string): Promise<void> {
-    console.log(`Uploading file ${filename} with contentType ${contentType}`);
-    const { ok, error } = await this.client.uploadFromBytes(filename, buffer);
+    try {
+      console.log(`[Storage] Starting upload for file: ${filename}`);
+      console.log(`[Storage] File size: ${buffer.length} bytes`);
+      console.log(`[Storage] Content type: ${contentType}`);
 
-    if (!ok) {
-      console.error('Upload error:', error);
-      throw new Error('Failed to upload file');
+      const { ok, error } = await this.client.uploadFromBytes(filename, buffer);
+
+      if (!ok) {
+        console.error('[Storage] Upload failed:', error);
+        throw new Error(`Failed to upload file: ${error}`);
+      }
+
+      console.log(`[Storage] Upload successful for file: ${filename}`);
+    } catch (error) {
+      console.error('[Storage] Upload error:', error);
+      throw error;
     }
   }
 
   async getFileUrl(bucket: string, filename: string): Promise<string> {
-    // Get a public URL for the file from the Object Storage client
-    return this.client.getPublicUrl(filename);
+    try {
+      console.log(`[Storage] Getting public URL for file: ${filename}`);
+      const url = this.client.getPublicUrl(filename);
+      console.log(`[Storage] Generated URL: ${url}`);
+      return url;
+    } catch (error) {
+      console.error('[Storage] Error getting public URL:', error);
+      throw error;
+    }
   }
 
   async createImage(insertImage: InsertImage): Promise<Image> {
-    const id = this.currentId++;
-    const image: Image = { id, ...insertImage };
-    this.images.set(id, image);
-    return image;
+    try {
+      console.log('[Storage] Creating image record:', insertImage);
+      const id = this.currentId++;
+      const image: Image = { id, ...insertImage };
+      this.images.set(id, image);
+      console.log('[Storage] Image record created:', image);
+      return image;
+    } catch (error) {
+      console.error('[Storage] Error creating image record:', error);
+      throw error;
+    }
   }
 
   async getImage(id: number): Promise<Image | undefined> {
@@ -53,21 +78,20 @@ export class MemStorage implements IStorage {
 
   async getImages(): Promise<Image[]> {
     try {
-      // List all objects in the bucket
+      console.log('[Storage] Fetching all images');
       const { ok, value: objects, error } = await this.client.list();
 
       if (!ok) {
-        console.error('Error listing objects:', error);
+        console.error('[Storage] Error listing objects:', error);
         return [];
       }
 
-      // Convert objects to images
+      console.log('[Storage] Objects in storage:', objects);
       const images = Array.from(this.images.values());
-      console.log(`Found ${images.length} images`);
-
+      console.log(`[Storage] Returning ${images.length} images`);
       return images;
     } catch (error) {
-      console.error('Error fetching images:', error);
+      console.error('[Storage] Error fetching images:', error);
       return [];
     }
   }

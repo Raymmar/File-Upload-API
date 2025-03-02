@@ -14,10 +14,13 @@ const upload = multer({
     fileSize: MAX_FILE_SIZE
   },
   fileFilter: (_req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+    console.log(`[Upload] Received file: ${file.originalname}, type: ${file.mimetype}`);
     if (!ACCEPTED_IMAGE_TYPES.includes(file.mimetype)) {
+      console.log(`[Upload] Rejected file type: ${file.mimetype}`);
       cb(new Error("Invalid file type"));
       return;
     }
+    console.log(`[Upload] Accepted file: ${file.originalname}`);
     cb(null, true);
   }
 });
@@ -26,33 +29,43 @@ export async function registerRoutes(app: Express) {
   // Get all images
   app.get("/api/images", async (_req, res) => {
     try {
+      console.log('[API] Getting all images');
       const images = await storage.getImages();
+      console.log(`[API] Retrieved ${images.length} images`);
       res.json(images);
     } catch (error) {
-      console.error("Failed to get images:", error);
+      console.error("[API] Failed to get images:", error);
       res.status(500).json({ message: "Failed to get images" });
     }
   });
 
   app.post("/api/upload", upload.single("file"), async (req: MulterRequest, res) => {
     try {
+      console.log('[API] Processing upload request');
+
       if (!req.file) {
+        console.log('[API] No file in request');
         return res.status(400).json({ message: "No file uploaded" });
       }
 
       const file = req.file;
+      console.log(`[API] File received: ${file.originalname}, size: ${file.size}, type: ${file.mimetype}`);
 
       // Get the Replit object storage bucket
       const bucket = await storage.getBucket();
+      console.log(`[API] Using bucket: ${bucket}`);
 
       // Generate a unique filename
       const filename = `${Date.now()}-${file.originalname}`;
+      console.log(`[API] Generated filename: ${filename}`);
 
       // Upload to Replit storage
       await storage.uploadFile(bucket, filename, file.buffer, file.mimetype);
+      console.log('[API] File uploaded to storage');
 
       // Get the public URL
       const url = await storage.getFileUrl(bucket, filename);
+      console.log(`[API] Generated public URL: ${url}`);
 
       // Save metadata to storage
       const image = await storage.createImage({
@@ -61,10 +74,11 @@ export async function registerRoutes(app: Express) {
         contentType: file.mimetype,
         size: file.size
       });
+      console.log('[API] Image metadata saved:', image);
 
       res.json(image);
     } catch (error) {
-      console.error("Upload error:", error);
+      console.error("[API] Upload error:", error);
       res.status(500).json({ message: "Failed to upload file" });
     }
   });
