@@ -56,7 +56,7 @@ export class MemStorage implements IStorage {
 
   async getFileUrl(bucket: string, filename: string): Promise<string> {
     // The URL will be handled by our API endpoint
-    return `/api/files/${filename}`;
+    return `/api/files/${encodeURIComponent(filename)}`;
   }
 
   async createImage(insertImage: InsertImage): Promise<Image> {

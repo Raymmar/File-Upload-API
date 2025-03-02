@@ -72,7 +72,8 @@ export async function registerRoutes(app: Express) {
   // Add endpoint to serve files
   app.get("/api/files/:filename", async (req, res) => {
     try {
-      const fileData = await storage.getFile(req.params.filename);
+      const filename = decodeURIComponent(req.params.filename);
+      const fileData = await storage.getFile(filename);
       if (!fileData) {
         return res.status(404).json({ message: "File not found" });
       }
