@@ -71,7 +71,7 @@ export class MemStorage implements IStorage {
       const bucketId = 'replit-objstore-86a9d9a7-f963-4f43-9cd8-a2c5f2d7b1e8';
 
       // Construct the URL using the bucket ID and storage domain
-      const url = `https://${bucketId}.${storageDomain}/${sanitizedFilename}`;
+      const url = `https://${storageDomain}/${bucketId}/${sanitizedFilename}`;
       console.log(`[Storage] Generated URL: ${url}`);
       return url;
     } catch (error) {
@@ -122,7 +122,7 @@ export class MemStorage implements IStorage {
           const filename = obj.name;
           const storageDomain = process.env.REPLIT_OBJECT_STORAGE_URL || 'storage.replit.com';
           const bucketId = 'replit-objstore-86a9d9a7-f963-4f43-9cd8-a2c5f2d7b1e8';
-          const url = `https://${bucketId}.${storageDomain}/${filename}`;
+          const url = `https://${storageDomain}/${bucketId}/${filename}`;
 
           // Determine content type from filename
           const contentType = filename.toLowerCase().endsWith('.png') 
