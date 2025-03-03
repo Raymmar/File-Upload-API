@@ -63,9 +63,17 @@ export class MemStorage implements IStorage {
   async getFileUrl(bucket: string, filename: string): Promise<string> {
     try {
       console.log(`[Storage] Getting URL for file: ${filename}`);
-      // Return URL to our API endpoint
-      const url = `/api/storage/${encodeURIComponent(filename)}`;
-      console.log(`[Storage] Generated URL: ${url}`);
+      // Get the Replit domain from environment
+      const replitDomain = process.env.REPLIT_DOMAINS ? JSON.parse(process.env.REPLIT_DOMAINS)[0] : null;
+
+      if (!replitDomain) {
+        console.warn('[Storage] REPLIT_DOMAINS not found, falling back to relative URL');
+        return `/api/storage/${encodeURIComponent(filename)}`;
+      }
+
+      // Construct full URL using the Replit domain
+      const url = `https://${replitDomain}/api/storage/${encodeURIComponent(filename)}`;
+      console.log(`[Storage] Generated full URL: ${url}`);
       return url;
     } catch (error) {
       console.error('[Storage] Error getting URL:', error);
