@@ -42,19 +42,21 @@ export class MemStorage implements IStorage {
   async uploadFile(bucket: string, filename: string, buffer: Buffer, contentType: string): Promise<void> {
     try {
       const sanitizedFilename = sanitizeFilename(filename);
+      // Store files in an 'images' directory
+      const filepath = `images/${sanitizedFilename}`;
       console.log(`[Storage] Starting upload for file: ${filename}`);
-      console.log(`[Storage] Sanitized filename: ${sanitizedFilename}`);
+      console.log(`[Storage] Sanitized filepath: ${filepath}`);
       console.log(`[Storage] File size: ${buffer.length} bytes`);
       console.log(`[Storage] Content type: ${contentType}`);
 
-      const { ok, error } = await this.client.uploadFromBytes(sanitizedFilename, buffer);
+      const { ok, error } = await this.client.uploadFromBytes(filepath, buffer);
 
       if (!ok) {
         console.error('[Storage] Upload failed:', error);
         throw new Error(`Failed to upload file: ${error}`);
       }
 
-      console.log(`[Storage] Upload successful for file: ${sanitizedFilename}`);
+      console.log(`[Storage] Upload successful for file: ${filepath}`);
     } catch (error) {
       console.error('[Storage] Upload error:', error);
       throw error;
@@ -65,9 +67,10 @@ export class MemStorage implements IStorage {
     try {
       console.log(`[Storage] Getting URL for file: ${filename}`);
       const sanitizedFilename = sanitizeFilename(filename);
+      const filepath = `images/${sanitizedFilename}`;
 
       // Return URL to our API endpoint
-      const url = `/api/storage/${encodeURIComponent(sanitizedFilename)}`;
+      const url = `/api/storage/${encodeURIComponent(filepath)}`;
       console.log(`[Storage] Generated URL: ${url}`);
       return url;
     } catch (error) {
@@ -82,7 +85,7 @@ export class MemStorage implements IStorage {
       const id = this.currentId++;
       const image: Image = { 
         id, 
-        filename: sanitizeFilename(insertImage.filename),
+        filename: `images/${sanitizeFilename(insertImage.filename)}`,
         url: insertImage.url,
         contentType: insertImage.contentType,
         size: insertImage.size
@@ -118,7 +121,9 @@ export class MemStorage implements IStorage {
           const filename = obj.name;
           const storageDomain = process.env.REPLIT_OBJECT_STORAGE_URL || 'storage.replit.com';
           const bucketId = 'replit-objstore-86a9d9a7-f963-4f43-9cd8-a2c5f2d7b1e8';
-          const url = `https://${storageDomain}/${bucketId}/${filename}`;
+
+          // Construct URL using our API endpoint
+          const url = `/api/storage/${encodeURIComponent(filename)}`;
 
           // Determine content type from filename
           const contentType = filename.toLowerCase().endsWith('.png') 

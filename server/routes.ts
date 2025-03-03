@@ -40,7 +40,7 @@ export async function registerRoutes(app: Express) {
   });
 
   // Serve images through API endpoint
-  app.get("/api/storage/:filename", async (req, res, next) => {
+  app.get("/api/storage/:filename(*)", async (req, res, next) => {
     try {
       console.log(`[API] Serving file: ${req.params.filename}`);
       const filename = decodeURIComponent(req.params.filename);
@@ -48,12 +48,12 @@ export async function registerRoutes(app: Express) {
       // Get the file data from Object Storage
       const { ok, value: buffer, error } = await storage.client.downloadAsBytes(filename);
 
-      if (!ok || !buffer) {
+      if (!ok || !buffer || buffer.length === 0) {
         console.error('[API] File not found:', error);
         return res.status(404).json({ message: "File not found" });
       }
 
-      // Set appropriate content type
+      // Set appropriate content type based on file extension
       const ext = filename.split('.').pop()?.toLowerCase();
       const contentType =
         ext === 'png'
@@ -67,7 +67,7 @@ export async function registerRoutes(app: Express) {
       // Set headers for caching and content type
       res.setHeader('Content-Type', contentType);
       res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year
-      res.send(buffer[0]); // Note: buffer is an array, we want the first element
+      res.send(buffer[0]); // Important: Get the first element of the buffer array
     } catch (error) {
       console.error("[API] Error serving file:", error);
       next(error);
