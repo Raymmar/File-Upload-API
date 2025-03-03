@@ -21,6 +21,7 @@ export interface IStorage {
   createImage(image: InsertImage): Promise<Image>;
   getImage(id: number): Promise<Image | undefined>;
   getImages(): Promise<Image[]>;
+  deleteImage(id: number): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -88,7 +89,7 @@ export class MemStorage implements IStorage {
         filename: `images/${sanitizeFilename(insertImage.filename)}`,
         url: insertImage.url,
         contentType: insertImage.contentType,
-        size: insertImage.size
+        size: insertImage.size || 0
       };
       this.images.set(id, image);
       console.log('[Storage] Image record created:', image);
@@ -119,8 +120,6 @@ export class MemStorage implements IStorage {
       const images = await Promise.all(
         objects.map(async (obj, index) => {
           const filename = obj.name;
-          const storageDomain = process.env.REPLIT_OBJECT_STORAGE_URL || 'storage.replit.com';
-          const bucketId = 'replit-objstore-86a9d9a7-f963-4f43-9cd8-a2c5f2d7b1e8';
 
           // Construct URL using our API endpoint
           const url = `/api/storage/${encodeURIComponent(filename)}`;
@@ -151,6 +150,34 @@ export class MemStorage implements IStorage {
     } catch (error) {
       console.error('[Storage] Error fetching images:', error);
       return [];
+    }
+  }
+
+  async deleteImage(id: number): Promise<boolean> {
+    try {
+      console.log(`[Storage] Attempting to delete image with id: ${id}`);
+      const image = await this.getImage(id);
+
+      if (!image) {
+        console.log(`[Storage] Image with id ${id} not found`);
+        return false;
+      }
+
+      // Delete from object storage
+      const { ok, error } = await this.client.delete(image.filename);
+
+      if (!ok) {
+        console.error('[Storage] Error deleting from storage:', error);
+        return false;
+      }
+
+      // Remove from our local map
+      this.images.delete(id);
+      console.log(`[Storage] Successfully deleted image with id: ${id}`);
+      return true;
+    } catch (error) {
+      console.error('[Storage] Error deleting image:', error);
+      return false;
     }
   }
 }

@@ -9,6 +9,13 @@ interface MulterRequest extends Request {
   file?: Express.Multer.File;
 }
 
+// Standard API response type
+interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}
+
 const upload = multer({
   limits: {
     fileSize: MAX_FILE_SIZE
@@ -32,10 +39,50 @@ export async function registerRoutes(app: Express) {
       console.log('[API] Getting all images');
       const images = await storage.getImages();
       console.log(`[API] Retrieved ${images.length} images`);
-      res.json(images);
+      res.json({ success: true, data: images } as ApiResponse<typeof images>);
     } catch (error) {
       console.error("[API] Failed to get images:", error);
-      res.status(500).json({ message: "Failed to get images" });
+      res.status(500).json({ success: false, error: "Failed to get images" });
+    }
+  });
+
+  // Get single image by ID
+  app.get("/api/images/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ success: false, error: "Invalid image ID" });
+      }
+
+      const image = await storage.getImage(id);
+      if (!image) {
+        return res.status(404).json({ success: false, error: "Image not found" });
+      }
+
+      res.json({ success: true, data: image });
+    } catch (error) {
+      console.error("[API] Failed to get image:", error);
+      res.status(500).json({ success: false, error: "Failed to get image" });
+    }
+  });
+
+  // Delete image by ID
+  app.delete("/api/images/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ success: false, error: "Invalid image ID" });
+      }
+
+      const deleted = await storage.deleteImage(id);
+      if (!deleted) {
+        return res.status(404).json({ success: false, error: "Image not found or could not be deleted" });
+      }
+
+      res.json({ success: true, data: { id } });
+    } catch (error) {
+      console.error("[API] Failed to delete image:", error);
+      res.status(500).json({ success: false, error: "Failed to delete image" });
     }
   });
 
@@ -48,9 +95,9 @@ export async function registerRoutes(app: Express) {
       // Get the file data from Object Storage
       const { ok, value: buffer, error } = await storage.client.downloadAsBytes(filename);
 
-      if (!ok || !buffer || buffer.length === 0) {
+      if (!ok || !buffer) {
         console.error('[API] File not found:', error);
-        return res.status(404).json({ message: "File not found" });
+        return res.status(404).json({ success: false, error: "File not found" });
       }
 
       // Set appropriate content type based on file extension
@@ -67,20 +114,21 @@ export async function registerRoutes(app: Express) {
       // Set headers for caching and content type
       res.setHeader('Content-Type', contentType);
       res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year
-      res.send(buffer[0]); // Important: Get the first element of the buffer array
+      res.send(buffer[0]); // Send the first element of the buffer array
     } catch (error) {
       console.error("[API] Error serving file:", error);
       next(error);
     }
   });
 
+  // Upload new image
   app.post("/api/upload", upload.single("file"), async (req: MulterRequest, res) => {
     try {
       console.log('[API] Processing upload request');
 
       if (!req.file) {
         console.log('[API] No file in request');
-        return res.status(400).json({ message: "No file uploaded" });
+        return res.status(400).json({ success: false, error: "No file uploaded" });
       }
 
       const file = req.file;
@@ -111,10 +159,10 @@ export async function registerRoutes(app: Express) {
       });
       console.log('[API] Image metadata saved:', image);
 
-      res.json(image);
+      res.json({ success: true, data: image });
     } catch (error) {
       console.error("[API] Upload error:", error);
-      res.status(500).json({ message: "Failed to upload file" });
+      res.status(500).json({ success: false, error: "Failed to upload file" });
     }
   });
 
