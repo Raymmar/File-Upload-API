@@ -6,7 +6,13 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-import { ACCEPTED_IMAGE_TYPES, MAX_FILE_SIZE } from "@shared/schema";
+import { ACCEPTED_IMAGE_TYPES, MAX_FILE_SIZE, type Image } from "@shared/schema";
+
+interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}
 
 export default function ImageUploader() {
   const [preview, setPreview] = useState<string | null>(null);
@@ -15,7 +21,7 @@ export default function ImageUploader() {
   const queryClient = useQueryClient();
 
   const uploadMutation = useMutation({
-    mutationFn: async (file: File) => {
+    mutationFn: async (file: File): Promise<ApiResponse<Image>> => {
       const formData = new FormData();
       formData.append("file", file);
 
@@ -28,36 +34,40 @@ export default function ImageUploader() {
       };
 
       // Wrap XHR in a promise
-      const response = await new Promise((resolve, reject) => {
+      const response = await new Promise<ApiResponse<Image>>((resolve, reject) => {
         xhr.open("POST", "/api/upload");
         xhr.onload = () => {
           if (xhr.status === 200) {
             resolve(JSON.parse(xhr.response));
           } else {
-            reject(xhr.statusText);
+            reject(new Error(xhr.statusText));
           }
         };
-        xhr.onerror = () => reject(xhr.statusText);
+        xhr.onerror = () => reject(new Error(xhr.statusText));
         xhr.send(formData);
       });
 
       return response;
     },
-    onSuccess: (data) => {
+    onSuccess: (response) => {
+      if (!response.success || !response.data) {
+        throw new Error(response.error || "Upload failed");
+      }
+
       toast({
         title: "Success",
         description: "Image uploaded successfully",
       });
       // Use the URL from the server response for preview
-      setPreview(data.url);
+      setPreview(response.data.url);
       setUploadProgress(0);
       // Invalidate images query to refresh the gallery
       queryClient.invalidateQueries({ queryKey: ["/api/images"] });
     },
-    onError: () => {
+    onError: (error) => {
       toast({
         title: "Error",
-        description: "Failed to upload image",
+        description: error instanceof Error ? error.message : "Failed to upload image",
         variant: "destructive",
       });
       setUploadProgress(0);

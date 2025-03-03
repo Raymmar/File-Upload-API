@@ -2,8 +2,14 @@ import { useQuery } from "@tanstack/react-query";
 import { type Image } from "@shared/schema";
 import { Card } from "@/components/ui/card";
 
+interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}
+
 export default function ImageGallery() {
-  const { data: images, isLoading } = useQuery<Image[]>({
+  const { data: response, isLoading } = useQuery<ApiResponse<Image[]>>({
     queryKey: ["/api/images"],
   });
 
@@ -15,13 +21,15 @@ export default function ImageGallery() {
     );
   }
 
-  if (!images?.length) {
+  if (!response?.success || !response.data?.length) {
     return (
       <div className="text-center text-muted-foreground">
         No images uploaded yet
       </div>
     );
   }
+
+  const images = response.data;
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
