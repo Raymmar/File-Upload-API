@@ -116,9 +116,12 @@ export class MemStorage implements IStorage {
 
       console.log('[Storage] Objects in storage:', objects);
 
+      // Filter objects to include only those in the images directory
+      const imageObjects = objects.filter(obj => obj.name.startsWith('images/'));
+
       // Convert the storage objects to Image records
       const images = await Promise.all(
-        objects.map(async (obj, index) => {
+        imageObjects.map(async (obj, index) => {
           const filename = obj.name;
 
           // Construct URL using our API endpoint
@@ -130,20 +133,22 @@ export class MemStorage implements IStorage {
             : 'image/jpeg';
 
           // Create an Image record if it doesn't exist
-          if (!this.images.has(index + 1)) {
-            const image: Image = {
-              id: index + 1,
-              filename,
-              url,
-              contentType,
-              size: 0 // We don't have the actual size from the list operation
-            };
-            this.images.set(index + 1, image);
-          }
+          const newImage: Image = {
+            id: index + 1,
+            filename,
+            url,
+            contentType,
+            size: 0 // We don't have the actual size from the list operation
+          };
 
-          return this.images.get(index + 1)!;
+          // Update our local map
+          this.images.set(index + 1, newImage);
+          return newImage;
         })
       );
+
+      // Update currentId to be greater than the highest id
+      this.currentId = Math.max(...images.map(img => img.id), 0) + 1;
 
       console.log(`[Storage] Returning ${images.length} images`);
       return images;
