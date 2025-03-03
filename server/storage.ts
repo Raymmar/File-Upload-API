@@ -43,7 +43,7 @@ export class MemStorage implements IStorage {
   async uploadFile(bucket: string, filename: string, buffer: Buffer, contentType: string): Promise<void> {
     try {
       const sanitizedFilename = sanitizeFilename(filename);
-      // Store files in an 'images' directory
+      // Ensure we're storing files in the 'images' directory
       const filepath = `images/${sanitizedFilename}`;
       console.log(`[Storage] Starting upload for file: ${filename}`);
       console.log(`[Storage] Sanitized filepath: ${filepath}`);
@@ -84,9 +84,14 @@ export class MemStorage implements IStorage {
     try {
       console.log('[Storage] Creating image record:', insertImage);
       const id = this.currentId++;
+      // Ensure the filename has the 'images/' prefix
+      const filename = insertImage.filename.startsWith('images/') 
+        ? insertImage.filename 
+        : `images/${sanitizeFilename(insertImage.filename)}`;
+
       const image: Image = { 
         id, 
-        filename: `images/${sanitizeFilename(insertImage.filename)}`,
+        filename,
         url: insertImage.url,
         contentType: insertImage.contentType,
         size: insertImage.size || 0
