@@ -39,6 +39,41 @@ export async function registerRoutes(app: Express) {
     }
   });
 
+  // Serve images through API endpoint
+  app.get("/api/storage/:filename", async (req, res, next) => {
+    try {
+      console.log(`[API] Serving file: ${req.params.filename}`);
+      const filename = decodeURIComponent(req.params.filename);
+
+      // Get the file data from Object Storage
+      const { ok, value: buffer, error } = await storage.client.downloadAsBytes(filename);
+
+      if (!ok || !buffer) {
+        console.error('[API] File not found:', error);
+        return res.status(404).json({ message: "File not found" });
+      }
+
+      // Set appropriate content type
+      const ext = filename.split('.').pop()?.toLowerCase();
+      const contentType =
+        ext === 'png'
+          ? 'image/png'
+          : ext === 'jpg' || ext === 'jpeg'
+          ? 'image/jpeg'
+          : ext === 'gif'
+          ? 'image/gif'
+          : 'application/octet-stream';
+
+      // Set headers for caching and content type
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year
+      res.send(buffer[0]); // Note: buffer is an array, we want the first element
+    } catch (error) {
+      console.error("[API] Error serving file:", error);
+      next(error);
+    }
+  });
+
   app.post("/api/upload", upload.single("file"), async (req: MulterRequest, res) => {
     try {
       console.log('[API] Processing upload request');
@@ -64,7 +99,7 @@ export async function registerRoutes(app: Express) {
       console.log('[API] File uploaded to storage');
 
       // Get the public URL
-      const url = await storage.getFileUrl(bucket, filename);
+      const url = `/api/storage/${encodeURIComponent(filename)}`;
       console.log(`[API] Generated public URL: ${url}`);
 
       // Save metadata to storage

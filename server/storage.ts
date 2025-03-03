@@ -24,9 +24,9 @@ export interface IStorage {
 }
 
 export class MemStorage implements IStorage {
+  client: Client;
   private images: Map<number, Image>;
   private currentId: number;
-  private client: Client;
 
   constructor() {
     this.images = new Map();
@@ -66,12 +66,8 @@ export class MemStorage implements IStorage {
       console.log(`[Storage] Getting URL for file: ${filename}`);
       const sanitizedFilename = sanitizeFilename(filename);
 
-      // Get the storage domain and bucket ID
-      const storageDomain = process.env.REPLIT_OBJECT_STORAGE_URL || 'storage.replit.com';
-      const bucketId = 'replit-objstore-86a9d9a7-f963-4f43-9cd8-a2c5f2d7b1e8';
-
-      // Construct the URL using the bucket ID and storage domain
-      const url = `https://${storageDomain}/${bucketId}/${sanitizedFilename}`;
+      // Return URL to our API endpoint
+      const url = `/api/storage/${encodeURIComponent(sanitizedFilename)}`;
       console.log(`[Storage] Generated URL: ${url}`);
       return url;
     } catch (error) {
