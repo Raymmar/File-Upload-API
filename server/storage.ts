@@ -28,12 +28,18 @@ export class MemStorage implements IStorage {
   client: Client;
   private images: Map<number, Image>;
   private currentId: number;
+  private domain: string;
 
   constructor() {
     this.images = new Map();
     this.currentId = 1;
     this.client = new Client();
+    // Get the Replit domain from environment variables
+    this.domain = process.env.REPL_SLUG && process.env.REPL_OWNER
+      ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`
+      : 'http://localhost:5000';
     console.log('Storage initialized with Object Storage client');
+    console.log('Using domain:', this.domain);
   }
 
   async getBucket(): Promise<string> {
@@ -63,8 +69,8 @@ export class MemStorage implements IStorage {
   async getFileUrl(bucket: string, filename: string): Promise<string> {
     try {
       console.log(`[Storage] Getting URL for file: ${filename}`);
-      // Return URL to our API endpoint
-      const url = `/api/storage/${encodeURIComponent(filename)}`;
+      // Return full URL including domain
+      const url = `${this.domain}/api/storage/${encodeURIComponent(filename)}`;
       console.log(`[Storage] Generated URL: ${url}`);
       return url;
     } catch (error) {
@@ -81,7 +87,7 @@ export class MemStorage implements IStorage {
       const image: Image = { 
         id, 
         filename: insertImage.filename,
-        url: insertImage.url,
+        url: `${this.domain}${insertImage.url}`, // Add domain to URL
         contentType: insertImage.contentType,
         size: insertImage.size || 0
       };
@@ -118,8 +124,8 @@ export class MemStorage implements IStorage {
         imageObjects.map(async (obj, index) => {
           const filename = obj.name;
 
-          // Construct URL using our API endpoint
-          const url = `/api/storage/${encodeURIComponent(filename)}`;
+          // Construct URL using full domain
+          const url = `${this.domain}/api/storage/${encodeURIComponent(filename)}`;
 
           // Determine content type from filename
           const contentType = filename.toLowerCase().endsWith('.png') 
