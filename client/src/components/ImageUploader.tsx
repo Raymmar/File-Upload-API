@@ -58,9 +58,11 @@ export default function ImageUploader() {
         title: "Success",
         description: "Image uploaded successfully",
       });
-      // Use the URL from the server response for preview
-      setPreview(response.data.url);
+
+      // Clear the preview after successful upload
+      setPreview(null);
       setUploadProgress(0);
+
       // Invalidate images query to refresh the gallery
       queryClient.invalidateQueries({ queryKey: ["/api/images"] });
     },
@@ -79,19 +81,22 @@ export default function ImageUploader() {
 
     if (!file) return;
 
+    // Check file type
     if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
       toast({
         title: "Invalid file type",
-        description: "Please upload a valid image file (JPG, PNG, WebP)",
+        description: `Please upload a valid image file. Accepted formats: ${ACCEPTED_IMAGE_TYPES.map(type => type.split('/')[1].toUpperCase()).join(', ')}`,
         variant: "destructive",
       });
       return;
     }
 
+    // Check file size
     if (file.size > MAX_FILE_SIZE) {
+      const sizeMB = Math.round(MAX_FILE_SIZE / (1024 * 1024));
       toast({
         title: "File too large",
-        description: "Image must be less than 5MB",
+        description: `Image must be less than ${sizeMB}MB. Your file is ${Math.round(file.size / (1024 * 1024))}MB`,
         variant: "destructive",
       });
       return;
@@ -103,7 +108,7 @@ export default function ImageUploader() {
     uploadMutation.mutate(file);
 
     return () => URL.revokeObjectURL(objectUrl);
-  }, []);
+  }, [toast, uploadMutation]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -149,6 +154,11 @@ export default function ImageUploader() {
               {isDragActive
                 ? "Drop the image here"
                 : "Drag & drop an image here, or click to select"}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Accepted formats: {ACCEPTED_IMAGE_TYPES.map(type => type.split('/')[1].toUpperCase()).join(', ')} 
+              <br />
+              Maximum size: {Math.round(MAX_FILE_SIZE / (1024 * 1024))}MB
             </p>
           </div>
         )}
