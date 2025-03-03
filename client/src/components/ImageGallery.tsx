@@ -34,7 +34,12 @@ export default function ImageGallery() {
     );
   }
 
-  const images = response.data;
+  // Sort images by extracting timestamp from filename and sorting in descending order
+  const images = [...response.data].sort((a, b) => {
+    const timestampA = parseInt(a.filename.split('/')[1].split('-')[0]);
+    const timestampB = parseInt(b.filename.split('/')[1].split('-')[0]);
+    return timestampB - timestampA;
+  });
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
