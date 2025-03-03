@@ -3,6 +3,7 @@ import { createServer } from "http";
 import multer from "multer";
 import { storage } from "./storage";
 import { ACCEPTED_IMAGE_TYPES, MAX_FILE_SIZE } from "@shared/schema";
+import { apiKeyAuth } from "./middleware/auth";
 
 // Define types for multer request
 interface MulterRequest extends Request {
@@ -33,6 +34,7 @@ const upload = multer({
 });
 
 export async function registerRoutes(app: Express) {
+  // Public endpoints - no authentication required
   // Get all images
   app.get("/api/images", async (_req, res) => {
     try {
@@ -46,7 +48,7 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  // Get single image by ID
+  // Get single image by ID - public
   app.get("/api/images/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -66,27 +68,7 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  // Delete image by ID
-  app.delete("/api/images/:id", async (req, res) => {
-    try {
-      const id = parseInt(req.params.id);
-      if (isNaN(id)) {
-        return res.status(400).json({ success: false, error: "Invalid image ID" });
-      }
-
-      const deleted = await storage.deleteImage(id);
-      if (!deleted) {
-        return res.status(404).json({ success: false, error: "Image not found or could not be deleted" });
-      }
-
-      res.json({ success: true, data: { id } });
-    } catch (error) {
-      console.error("[API] Failed to delete image:", error);
-      res.status(500).json({ success: false, error: "Failed to delete image" });
-    }
-  });
-
-  // Serve images through API endpoint
+  // Serve images through API endpoint - public
   app.get("/api/storage/:filename(*)", async (req, res, next) => {
     try {
       console.log(`[API] Serving file: ${req.params.filename}`);
@@ -121,8 +103,9 @@ export async function registerRoutes(app: Express) {
     }
   });
 
+  // Protected endpoints - require API key
   // Upload new image
-  app.post("/api/upload", upload.single("file"), async (req: MulterRequest, res) => {
+  app.post("/api/upload", apiKeyAuth, upload.single("file"), async (req: MulterRequest, res) => {
     try {
       console.log('[API] Processing upload request');
 
@@ -164,6 +147,26 @@ export async function registerRoutes(app: Express) {
     } catch (error) {
       console.error("[API] Upload error:", error);
       res.status(500).json({ success: false, error: "Failed to upload file" });
+    }
+  });
+
+  // Delete image by ID - protected
+  app.delete("/api/images/:id", apiKeyAuth, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ success: false, error: "Invalid image ID" });
+      }
+
+      const deleted = await storage.deleteImage(id);
+      if (!deleted) {
+        return res.status(404).json({ success: false, error: "Image not found or could not be deleted" });
+      }
+
+      res.json({ success: true, data: { id } });
+    } catch (error) {
+      console.error("[API] Failed to delete image:", error);
+      res.status(500).json({ success: false, error: "Failed to delete image" });
     }
   });
 

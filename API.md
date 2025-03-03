@@ -4,7 +4,10 @@
 The API is accessible at: `https://file-upload.replit.app/api`
 
 ## Authentication
-Currently, the API is open and doesn't require authentication.
+Protected endpoints require an API key to be included in the request headers:
+```
+X-API-KEY: your-api-key-here
+```
 
 ## Endpoints
 
@@ -14,6 +17,7 @@ Upload a new image to the storage.
 ```
 POST /api/upload
 Content-Type: multipart/form-data
+X-API-KEY: your-api-key
 ```
 
 **Request Body:**
@@ -26,11 +30,14 @@ Content-Type: multipart/form-data
 # Using curl
 curl -X POST \
   -H "Content-Type: multipart/form-data" \
+  -H "X-API-KEY: your-api-key" \
   -F "file=@\"./path/to/your/image.jpg\"" \
   https://file-upload.replit.app/api/upload
 
 # Using httpie (alternative)
-http -f POST https://file-upload.replit.app/api/upload file@"./path/to/your/image.jpg"
+http -f POST https://file-upload.replit.app/api/upload \
+  "X-API-KEY: your-api-key" \
+  file@"./path/to/your/image.jpg"
 ```
 
 **Success Response:**
@@ -114,15 +121,19 @@ Delete a specific image by ID.
 
 ```
 DELETE /api/images/:id
+X-API-KEY: your-api-key
 ```
 
 **Example Request (zsh/bash):**
 ```shell
 # Using curl
-curl -X DELETE "https://file-upload.replit.app/api/images/1"
+curl -X DELETE \
+  -H "X-API-KEY: your-api-key" \
+  "https://file-upload.replit.app/api/images/1"
 
 # Using httpie (alternative)
-http DELETE https://file-upload.replit.app/api/images/1
+http DELETE https://file-upload.replit.app/api/images/1 \
+  "X-API-KEY: your-api-key"
 ```
 
 **Success Response:**
@@ -172,6 +183,8 @@ All endpoints return error responses in the following format:
 
 Common HTTP Status Codes:
 - 400: Bad Request (invalid input)
+- 401: Unauthorized (missing API key)
+- 403: Forbidden (invalid API key)
 - 404: Not Found (image or resource doesn't exist)
 - 500: Internal Server Error
 
@@ -191,12 +204,13 @@ Common HTTP Status Codes:
 Here's a quick test you can run to verify the API is working:
 
 ```shell
-# List all images
+# List all images (public endpoint)
 curl "https://file-upload.replit.app/api/images"
 
-# Upload a test image
+# Upload a test image (protected endpoint)
 curl -X POST \
   -H "Content-Type: multipart/form-data" \
+  -H "X-API-KEY: your-api-key" \
   -F "file=@\"./test-image.jpg\"" \
   https://file-upload.replit.app/api/upload
 ```
