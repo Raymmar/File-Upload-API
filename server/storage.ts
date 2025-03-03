@@ -28,22 +28,12 @@ export class MemStorage implements IStorage {
   client: Client;
   private images: Map<number, Image>;
   private currentId: number;
-  private domain: string;
 
   constructor() {
     this.images = new Map();
     this.currentId = 1;
     this.client = new Client();
-
-    // Get the correct Replit domain from environment
-    const replitId = process.env.REPLIT_ID || '';
-    const replitSlug = process.env.REPL_SLUG || '';
-    this.domain = replitId 
-      ? `https://${replitId}.${replitSlug}.repl.dev`
-      : 'http://localhost:5000';
-
     console.log('Storage initialized with Object Storage client');
-    console.log('Using domain:', this.domain);
   }
 
   async getBucket(): Promise<string> {
@@ -73,8 +63,8 @@ export class MemStorage implements IStorage {
   async getFileUrl(bucket: string, filename: string): Promise<string> {
     try {
       console.log(`[Storage] Getting URL for file: ${filename}`);
-      // Return full URL with proper path encoding
-      const url = `${this.domain}/api/storage/${encodeURIComponent(filename)}`;
+      // Return URL to our API endpoint
+      const url = `/api/storage/${encodeURIComponent(filename)}`;
       console.log(`[Storage] Generated URL: ${url}`);
       return url;
     } catch (error) {
@@ -88,15 +78,13 @@ export class MemStorage implements IStorage {
       console.log('[Storage] Creating image record:', insertImage);
       const id = this.currentId++;
 
-      // Create image with properly encoded URL
       const image: Image = { 
         id, 
         filename: insertImage.filename,
-        url: `${this.domain}/api/storage/${encodeURIComponent(insertImage.filename)}`,
+        url: insertImage.url,
         contentType: insertImage.contentType,
         size: insertImage.size || 0
       };
-
       this.images.set(id, image);
       console.log('[Storage] Image record created:', image);
       return image;
@@ -125,13 +113,13 @@ export class MemStorage implements IStorage {
       // Filter objects to include only those in the images directory
       const imageObjects = objects.filter(obj => obj.name.startsWith('images/'));
 
-      // Convert the storage objects to Image records with properly encoded URLs
+      // Convert the storage objects to Image records
       const images = await Promise.all(
         imageObjects.map(async (obj, index) => {
           const filename = obj.name;
 
-          // Construct properly encoded URL using full domain
-          const url = `${this.domain}/api/storage/${encodeURIComponent(filename)}`;
+          // Construct URL using our API endpoint
+          const url = `/api/storage/${encodeURIComponent(filename)}`;
 
           // Determine content type from filename
           const contentType = filename.toLowerCase().endsWith('.png') 
