@@ -140,20 +140,20 @@ export async function registerRoutes(app: Express) {
 
       // Generate a unique filename with timestamp
       const timestamp = Date.now();
-      const filename = `${timestamp}-${file.originalname}`;
+      const filename = `images/${timestamp}-${file.originalname}`;
       console.log(`[API] Generated filename: ${filename}`);
 
-      // Upload to Replit storage - don't add images/ prefix here as it's handled by uploadFile
+      // Upload to Replit storage
       await storage.uploadFile(bucket, filename, file.buffer, file.mimetype);
       console.log('[API] File uploaded to storage');
 
       // Get the public URL
-      const url = `/api/storage/${encodeURIComponent(`images/${filename}`)}`;
+      const url = `/api/storage/${encodeURIComponent(filename)}`;
       console.log(`[API] Generated public URL: ${url}`);
 
       // Save metadata to storage
       const image = await storage.createImage({
-        filename: `images/${filename}`,
+        filename,
         url,
         contentType: file.mimetype,
         size: file.size

@@ -42,22 +42,18 @@ export class MemStorage implements IStorage {
 
   async uploadFile(bucket: string, filename: string, buffer: Buffer, contentType: string): Promise<void> {
     try {
-      const sanitizedFilename = sanitizeFilename(filename);
-      // Always store files in the 'images' directory
-      const filepath = `images/${sanitizedFilename}`;
       console.log(`[Storage] Starting upload for file: ${filename}`);
-      console.log(`[Storage] Sanitized filepath: ${filepath}`);
       console.log(`[Storage] File size: ${buffer.length} bytes`);
       console.log(`[Storage] Content type: ${contentType}`);
 
-      const { ok, error } = await this.client.uploadFromBytes(filepath, buffer);
+      const { ok, error } = await this.client.uploadFromBytes(filename, buffer);
 
       if (!ok) {
         console.error('[Storage] Upload failed:', error);
         throw new Error(`Failed to upload file: ${error}`);
       }
 
-      console.log(`[Storage] Upload successful for file: ${filepath}`);
+      console.log(`[Storage] Upload successful for file: ${filename}`);
     } catch (error) {
       console.error('[Storage] Upload error:', error);
       throw error;
@@ -67,11 +63,8 @@ export class MemStorage implements IStorage {
   async getFileUrl(bucket: string, filename: string): Promise<string> {
     try {
       console.log(`[Storage] Getting URL for file: ${filename}`);
-      const sanitizedFilename = sanitizeFilename(filename);
-      const filepath = `images/${sanitizedFilename}`;
-
       // Return URL to our API endpoint
-      const url = `/api/storage/${encodeURIComponent(filepath)}`;
+      const url = `/api/storage/${encodeURIComponent(filename)}`;
       console.log(`[Storage] Generated URL: ${url}`);
       return url;
     } catch (error) {
@@ -84,14 +77,10 @@ export class MemStorage implements IStorage {
     try {
       console.log('[Storage] Creating image record:', insertImage);
       const id = this.currentId++;
-      // Ensure the filename has the 'images/' prefix
-      const filename = insertImage.filename.startsWith('images/') 
-        ? insertImage.filename 
-        : `images/${sanitizeFilename(insertImage.filename)}`;
 
       const image: Image = { 
         id, 
-        filename,
+        filename: insertImage.filename,
         url: insertImage.url,
         contentType: insertImage.contentType,
         size: insertImage.size || 0
