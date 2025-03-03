@@ -21,11 +21,16 @@ Content-Type: multipart/form-data
   - Supported formats: JPEG, PNG
   - Max file size: 5MB
 
-**Example Request:**
-```bash
+**Example Request (zsh/bash):**
+```shell
+# Using curl
 curl -X POST \
-  -F "file=@/path/to/your/image.jpg" \
+  -H "Content-Type: multipart/form-data" \
+  -F "file=@\"./path/to/your/image.jpg\"" \
   https://file-upload.replit.app/api/upload
+
+# Using httpie (alternative)
+http -f POST https://file-upload.replit.app/api/upload file@"./path/to/your/image.jpg"
 ```
 
 **Success Response:**
@@ -49,9 +54,13 @@ Retrieve a list of all uploaded images.
 GET /api/images
 ```
 
-**Example Request:**
-```bash
-curl https://file-upload.replit.app/api/images
+**Example Request (zsh/bash):**
+```shell
+# Using curl
+curl "https://file-upload.replit.app/api/images"
+
+# Using httpie (alternative)
+http GET https://file-upload.replit.app/api/images
 ```
 
 **Success Response:**
@@ -77,9 +86,13 @@ Retrieve information about a specific image by ID.
 GET /api/images/:id
 ```
 
-**Example Request:**
-```bash
-curl https://file-upload.replit.app/api/images/1
+**Example Request (zsh/bash):**
+```shell
+# Using curl
+curl "https://file-upload.replit.app/api/images/1"
+
+# Using httpie (alternative)
+http GET https://file-upload.replit.app/api/images/1
 ```
 
 **Success Response:**
@@ -103,9 +116,13 @@ Delete a specific image by ID.
 DELETE /api/images/:id
 ```
 
-**Example Request:**
-```bash
-curl -X DELETE https://file-upload.replit.app/api/images/1
+**Example Request (zsh/bash):**
+```shell
+# Using curl
+curl -X DELETE "https://file-upload.replit.app/api/images/1"
+
+# Using httpie (alternative)
+http DELETE https://file-upload.replit.app/api/images/1
 ```
 
 **Success Response:**
@@ -125,9 +142,16 @@ Get the actual image file.
 GET /api/storage/:filename
 ```
 
-**Example Request:**
-```bash
-curl https://file-upload.replit.app/api/storage/1234567890-image.jpg
+**Example Request (zsh/bash):**
+```shell
+# Using curl (download file)
+curl -O "https://file-upload.replit.app/api/storage/1234567890-image.jpg"
+
+# Using curl (view in browser)
+curl "https://file-upload.replit.app/api/storage/1234567890-image.jpg"
+
+# Using httpie
+http GET https://file-upload.replit.app/api/storage/1234567890-image.jpg
 ```
 
 **Response:**
@@ -156,7 +180,25 @@ Common HTTP Status Codes:
 - Supported image formats: JPEG, PNG
 - Filenames are automatically sanitized and timestamped
 
-## Notes
-- All URLs returned in the API responses are relative paths. Prepend your base URL to get the full URL.
-- Images are served with a 1-year cache duration for better performance.
-- Filenames are automatically sanitized to remove special characters and spaces.
+## Shell-specific Notes
+- If you're using zsh or bash, the examples above should work as-is
+- For filenames with spaces, make sure to properly escape or quote them
+- For curl uploads, the @ symbol must be immediately after the = sign
+- All URLs are properly quoted to handle special characters
+
+## Testing Examples
+
+Here's a quick test you can run to verify the API is working:
+
+```shell
+# List all images
+curl "https://file-upload.replit.app/api/images"
+
+# Upload a test image
+curl -X POST \
+  -H "Content-Type: multipart/form-data" \
+  -F "file=@\"./test-image.jpg\"" \
+  https://file-upload.replit.app/api/upload
+```
+
+For testing uploads with sample images, you can use any JPEG or PNG file under 5MB.
