@@ -11,6 +11,11 @@ interface ApiResponse<T> {
 export default function ImageGallery() {
   const { data: response, isLoading } = useQuery<ApiResponse<Image[]>>({
     queryKey: ["/api/images"],
+    // Disable caching to always fetch fresh data
+    staleTime: 0,
+    cacheTime: 0,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true
   });
 
   if (isLoading) {
