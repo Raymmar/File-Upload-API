@@ -130,8 +130,8 @@ export async function registerRoutes(app: Express) {
       await storage.uploadFile(bucket, filename, file.buffer, file.mimetype);
       console.log('[API] File uploaded to storage');
 
-      // Get the full URL including domain
-      const url = await storage.getFileUrl(bucket, filename);
+      // Get the public URL
+      const url = `/api/storage/${encodeURIComponent(filename)}`;
       console.log(`[API] Generated public URL: ${url}`);
 
       // Save metadata to storage
