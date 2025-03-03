@@ -1,7 +1,7 @@
 # Image Management API Documentation
 
 ## Base URL
-The API is accessible at: `https://your-repl-name.your-username.repl.co/api`
+The API is accessible at: `https://file-upload.replit.app/api`
 
 ## Authentication
 Currently, the API is open and doesn't require authentication.
@@ -25,7 +25,7 @@ Content-Type: multipart/form-data
 ```bash
 curl -X POST \
   -F "file=@/path/to/your/image.jpg" \
-  https://your-repl-name.your-username.repl.co/api/upload
+  https://file-upload.replit.app/api/upload
 ```
 
 **Success Response:**
@@ -51,7 +51,7 @@ GET /api/images
 
 **Example Request:**
 ```bash
-curl https://your-repl-name.your-username.repl.co/api/images
+curl https://file-upload.replit.app/api/images
 ```
 
 **Success Response:**
@@ -79,7 +79,7 @@ GET /api/images/:id
 
 **Example Request:**
 ```bash
-curl https://your-repl-name.your-username.repl.co/api/images/1
+curl https://file-upload.replit.app/api/images/1
 ```
 
 **Success Response:**
@@ -105,7 +105,7 @@ DELETE /api/images/:id
 
 **Example Request:**
 ```bash
-curl -X DELETE https://your-repl-name.your-username.repl.co/api/images/1
+curl -X DELETE https://file-upload.replit.app/api/images/1
 ```
 
 **Success Response:**
@@ -127,7 +127,7 @@ GET /api/storage/:filename
 
 **Example Request:**
 ```bash
-curl https://your-repl-name.your-username.repl.co/api/storage/1234567890-image.jpg
+curl https://file-upload.replit.app/api/storage/1234567890-image.jpg
 ```
 
 **Response:**
