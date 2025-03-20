@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { type Image } from "@shared/schema";
 import { Card } from "@/components/ui/card";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Trash2 } from "lucide-react";
+import { AlertCircle, Trash2, Copy, Check } from "lucide-react";
 import { useApiKey } from "./ApiKeyInput";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,30 @@ export default function ImageGallery() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [imageToDelete, setImageToDelete] = useState<Image | null>(null);
+  const [copiedImageId, setCopiedImageId] = useState<number | null>(null);
+
+  // Handle copy to clipboard
+  const copyToClipboard = (url: string, imageId: number) => {
+    const fullUrl = new URL(url, window.location.origin).toString();
+    navigator.clipboard.writeText(fullUrl)
+      .then(() => {
+        setCopiedImageId(imageId);
+        toast({
+          title: "URL Copied",
+          description: "Image URL has been copied to clipboard",
+        });
+        // Reset the copied state after 2 seconds
+        setTimeout(() => setCopiedImageId(null), 2000);
+      })
+      .catch((error) => {
+        console.error("Failed to copy URL:", error);
+        toast({
+          title: "Copy Failed",
+          description: "Failed to copy URL to clipboard",
+          variant: "destructive",
+        });
+      });
+  };
   
   const deleteMutation = useMutation({
     mutationFn: async (imageId: number) => {
@@ -161,14 +185,30 @@ export default function ImageGallery() {
                   e.currentTarget.style.background = "#f5f5f5";
                 }}
               />
-              <Button 
-                variant="destructive" 
-                size="icon" 
-                className="absolute top-2 right-2 rounded-full w-8 h-8 opacity-90"
-                onClick={() => setImageToDelete(image)}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
+              <div className="absolute top-2 right-2 flex gap-2">
+                <Button 
+                  variant="secondary" 
+                  size="icon" 
+                  className="rounded-full w-8 h-8 opacity-90 bg-white"
+                  onClick={() => copyToClipboard(image.url, image.id)}
+                  title="Copy image URL"
+                >
+                  {copiedImageId === image.id ? (
+                    <Check className="h-4 w-4 text-green-600" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
+                </Button>
+                <Button 
+                  variant="destructive" 
+                  size="icon" 
+                  className="rounded-full w-8 h-8 opacity-90"
+                  onClick={() => setImageToDelete(image)}
+                  title="Delete image"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
             <div className="p-4">
               <p className="text-sm text-muted-foreground truncate">
