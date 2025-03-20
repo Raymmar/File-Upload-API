@@ -35,7 +35,40 @@ export default function ImageGallery() {
 
   // Handle copy to clipboard
   const copyToClipboard = (url: string, imageId: number) => {
-    const fullUrl = new URL(url, window.location.origin).toString();
+    // Determine if we're in production or development
+    let fullUrl = "";
+    
+    // If the URL is a relative path starting with /
+    if (url.startsWith('/')) {
+      // For production, use the production domain if available
+      const prodDomain = import.meta.env.VITE_PRODUCTION_DOMAIN;
+      if (prodDomain) {
+        // Use the configured production domain
+        fullUrl = `https://${prodDomain}${url}`;
+      } else {
+        // Get the current domain from the window location
+        const currentDomain = window.location.hostname;
+        
+        // If we're on Replit's preview/dev domain, try to get the production domain
+        if (currentDomain.includes('.replit.dev') || currentDomain.includes('.kirk.replit.dev')) {
+          // Extract the repl name from the subdomain and construct the production URL
+          const replName = currentDomain.split('-')[0].split('.')[0];
+          if (replName) {
+            fullUrl = `https://${replName}.replit.app${url}`;
+          } else {
+            // Fallback to current origin if we can't determine the repl name
+            fullUrl = new URL(url, window.location.origin).toString();
+          }
+        } else {
+          // Just use the current origin if we're already in production
+          fullUrl = new URL(url, window.location.origin).toString();
+        }
+      }
+    } else {
+      // It's already a full URL
+      fullUrl = url;
+    }
+    
     navigator.clipboard.writeText(fullUrl)
       .then(() => {
         setCopiedImageId(imageId);
