@@ -40,10 +40,16 @@ export default function ImageUploader() {
           if (xhr.status === 200) {
             resolve(JSON.parse(xhr.response));
           } else {
-            reject(new Error(xhr.statusText));
+            // Try to parse error response
+            try {
+              const errorResponse = JSON.parse(xhr.response);
+              reject(new Error(errorResponse.error || xhr.statusText));
+            } catch (parseError) {
+              reject(new Error(`HTTP Error: ${xhr.status} ${xhr.statusText}`));
+            }
           }
         };
-        xhr.onerror = () => reject(new Error(xhr.statusText));
+        xhr.onerror = () => reject(new Error("Network error occurred. Please check your connection."));
         xhr.send(formData);
       });
 

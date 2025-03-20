@@ -17,21 +17,46 @@ interface ApiResponse<T> {
   error?: string;
 }
 
-const upload = multer({
+// Create custom error types
+class FileUploadError extends Error {
+  status: number;
+  code: string;
+  
+  constructor(message: string, status = 400, code = 'UPLOAD_ERROR') {
+    super(message);
+    this.name = 'FileUploadError';
+    this.status = status;
+    this.code = code;
+  }
+}
+
+// Create multer instance without calling single here
+const uploadMiddleware = multer({
   limits: {
     fileSize: MAX_FILE_SIZE
   },
   fileFilter: (_req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
     console.log(`[Upload] Received file: ${file.originalname}, type: ${file.mimetype}`);
+    
+    // Check file type
     if (!ACCEPTED_IMAGE_TYPES.includes(file.mimetype)) {
       console.log(`[Upload] Rejected file type: ${file.mimetype}`);
-      cb(new Error("Invalid file type"));
+      const error = new FileUploadError(
+        `Invalid file type. Accepted types: ${ACCEPTED_IMAGE_TYPES.join(', ')}`,
+        415, // Unsupported Media Type
+        'INVALID_FILE_TYPE'
+      );
+      cb(error);
       return;
     }
+    
     console.log(`[Upload] Accepted file: ${file.originalname}`);
     cb(null, true);
   }
 });
+
+// Create single file upload handler
+const upload = uploadMiddleware.single("file");
 
 export async function registerRoutes(app: Express) {
   // Public endpoints - no authentication required
@@ -42,9 +67,13 @@ export async function registerRoutes(app: Express) {
       const images = await storage.getImages();
       console.log(`[API] Retrieved ${images.length} images`);
       res.json({ success: true, data: images } as ApiResponse<typeof images>);
-    } catch (error) {
+    } catch (error: any) {
       console.error("[API] Failed to get images:", error);
-      res.status(500).json({ success: false, error: "Failed to get images" });
+      res.status(500).json({ 
+        success: false, 
+        error: error.message || "Failed to get images",
+        code: 'GET_IMAGES_ERROR'
+      });
     }
   });
 
@@ -105,48 +134,132 @@ export async function registerRoutes(app: Express) {
 
   // Protected endpoints - require API key
   // Upload new image
-  app.post("/api/upload", apiKeyAuth, upload.single("file"), async (req: MulterRequest, res) => {
+  app.post("/api/upload", apiKeyAuth, async (req: Request, res, next) => {
     try {
       console.log('[API] Processing upload request');
+      
+      // Handle multer upload with custom error handling
+      upload(req, res, async (err) => {
+        if (err) {
+          console.error('[API] Multer error:', err);
+          
+          // Handle multer-specific errors
+          if (err instanceof multer.MulterError) {
+            if (err.code === 'LIMIT_FILE_SIZE') {
+              const maxSizeMB = MAX_FILE_SIZE / (1024 * 1024);
+              return res.status(413).json({ 
+                success: false, 
+                error: `File too large. Maximum size is ${maxSizeMB}MB`,
+                code: 'FILE_TOO_LARGE' 
+              });
+            }
+            
+            // Other multer errors
+            return res.status(400).json({ 
+              success: false, 
+              error: `Upload error: ${err.message}`,
+              code: err.code || 'UPLOAD_ERROR' 
+            });
+          } 
+          
+          // Our custom file upload error
+          if (err instanceof FileUploadError) {
+            return res.status(err.status).json({
+              success: false,
+              error: err.message,
+              code: err.code
+            });
+          }
+          
+          // Generic error
+          return res.status(500).json({
+            success: false,
+            error: err.message || 'Unknown upload error',
+            code: 'UPLOAD_ERROR'
+          });
+        }
 
-      if (!req.file) {
-        console.log('[API] No file in request');
-        return res.status(400).json({ success: false, error: "No file uploaded" });
-      }
+        // Check if file exists in request
+        const typedReq = req as MulterRequest;
+        if (!typedReq.file) {
+          console.log('[API] No file in request');
+          return res.status(400).json({ 
+            success: false, 
+            error: "No file uploaded", 
+            code: 'NO_FILE' 
+          });
+        }
 
-      const file = req.file;
-      console.log(`[API] File received: ${file.originalname}, size: ${file.size}, type: ${file.mimetype}`);
+        try {
+          const file = typedReq.file;
+          console.log(`[API] File received: ${file.originalname}, size: ${file.size}, type: ${file.mimetype}`);
 
-      // Get the Replit object storage bucket
-      const bucket = await storage.getBucket();
-      console.log(`[API] Using bucket: ${bucket}`);
+          // Validate file size again (though multer should have caught this)
+          if (file.size > MAX_FILE_SIZE) {
+            const maxSizeMB = Math.round(MAX_FILE_SIZE / (1024 * 1024));
+            const fileSizeMB = Math.round(file.size / (1024 * 1024));
+            return res.status(413).json({ 
+              success: false, 
+              error: `File too large. Maximum size is ${maxSizeMB}MB, your file is ${fileSizeMB}MB`,
+              code: 'FILE_TOO_LARGE' 
+            });
+          }
 
-      // Generate a unique filename with timestamp
-      const timestamp = Date.now();
-      const filename = `images/${timestamp}-${file.originalname}`;
-      console.log(`[API] Generated filename: ${filename}`);
+          // Get the Replit object storage bucket
+          const bucket = await storage.getBucket();
+          console.log(`[API] Using bucket: ${bucket}`);
 
-      // Upload to Replit storage
-      await storage.uploadFile(bucket, filename, file.buffer, file.mimetype);
-      console.log('[API] File uploaded to storage');
+          // Generate a unique filename with timestamp
+          const timestamp = Date.now();
+          const filename = `images/${timestamp}-${file.originalname}`;
+          console.log(`[API] Generated filename: ${filename}`);
 
-      // Get the public URL
-      const url = `/api/storage/${encodeURIComponent(filename)}`;
-      console.log(`[API] Generated public URL: ${url}`);
+          // Upload to Replit storage
+          await storage.uploadFile(bucket, filename, file.buffer, file.mimetype);
+          console.log('[API] File uploaded to storage');
 
-      // Save metadata to storage
-      const image = await storage.createImage({
-        filename,
-        url,
-        contentType: file.mimetype,
-        size: file.size
+          // Get the public URL
+          const url = `/api/storage/${encodeURIComponent(filename)}`;
+          console.log(`[API] Generated public URL: ${url}`);
+
+          // Save metadata to storage
+          const image = await storage.createImage({
+            filename,
+            url,
+            contentType: file.mimetype,
+            size: file.size
+          });
+          console.log('[API] Image metadata saved:', image);
+
+          res.json({ success: true, data: image });
+        } catch (error: any) {
+          console.error("[API] Upload processing error:", error);
+          
+          let errorMessage = "Failed to process upload";
+          let errorCode = 'PROCESSING_ERROR';
+          let statusCode = 500;
+          
+          // Add specific error handling for storage errors if needed
+          if (error.message?.includes('bucket')) {
+            errorMessage = "Storage bucket error";
+            errorCode = 'STORAGE_BUCKET_ERROR';
+          } else if (error.message?.includes('permission')) {
+            errorMessage = "Storage permission denied";
+            errorCode = 'STORAGE_PERMISSION_ERROR';
+          } else if (error.name === 'TimeoutError') {
+            errorMessage = "Upload timed out";
+            errorCode = 'UPLOAD_TIMEOUT';
+          }
+          
+          res.status(statusCode).json({ 
+            success: false, 
+            error: errorMessage,
+            code: errorCode
+          });
+        }
       });
-      console.log('[API] Image metadata saved:', image);
-
-      res.json({ success: true, data: image });
-    } catch (error) {
-      console.error("[API] Upload error:", error);
-      res.status(500).json({ success: false, error: "Failed to upload file" });
+    } catch (error: any) {
+      next(error); // Pass to express error handler
     }
   });
 
