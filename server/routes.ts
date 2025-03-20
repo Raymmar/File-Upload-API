@@ -82,18 +82,30 @@ export async function registerRoutes(app: Express) {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
-        return res.status(400).json({ success: false, error: "Invalid image ID" });
+        return res.status(400).json({ 
+          success: false, 
+          error: "Invalid image ID", 
+          code: 'INVALID_ID_FORMAT' 
+        });
       }
 
       const image = await storage.getImage(id);
       if (!image) {
-        return res.status(404).json({ success: false, error: "Image not found" });
+        return res.status(404).json({ 
+          success: false, 
+          error: "Image not found", 
+          code: 'IMAGE_NOT_FOUND' 
+        });
       }
 
       res.json({ success: true, data: image });
-    } catch (error) {
+    } catch (error: any) {
       console.error("[API] Failed to get image:", error);
-      res.status(500).json({ success: false, error: "Failed to get image" });
+      res.status(500).json({ 
+        success: false, 
+        error: error.message || "Failed to get image", 
+        code: 'GET_IMAGE_ERROR' 
+      });
     }
   });
 
@@ -101,6 +113,15 @@ export async function registerRoutes(app: Express) {
   app.get("/api/storage/:filename(*)", async (req, res, next) => {
     try {
       console.log(`[API] Serving file: ${req.params.filename}`);
+      
+      if (!req.params.filename) {
+        return res.status(400).json({ 
+          success: false, 
+          error: "No filename specified", 
+          code: 'MISSING_FILENAME' 
+        });
+      }
+      
       const filename = decodeURIComponent(req.params.filename);
 
       // Get the file data from Object Storage
@@ -108,11 +129,23 @@ export async function registerRoutes(app: Express) {
 
       if (!ok || !buffer) {
         console.error('[API] File not found:', error);
-        return res.status(404).json({ success: false, error: "File not found" });
+        return res.status(404).json({ 
+          success: false, 
+          error: "File not found or could not be accessed", 
+          code: 'FILE_NOT_FOUND'
+        });
       }
 
       // Set appropriate content type based on file extension
       const ext = filename.split('.').pop()?.toLowerCase();
+      if (!ext) {
+        return res.status(400).json({ 
+          success: false, 
+          error: "Invalid file format. No file extension found.", 
+          code: 'INVALID_FILE_FORMAT' 
+        });
+      }
+      
       const contentType =
         ext === 'png'
           ? 'image/png'
@@ -120,15 +153,33 @@ export async function registerRoutes(app: Express) {
           ? 'image/jpeg'
           : ext === 'gif'
           ? 'image/gif'
+          : ext === 'webp'
+          ? 'image/webp'
           : 'application/octet-stream';
 
       // Set headers for caching and content type
       res.setHeader('Content-Type', contentType);
       res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year
       res.send(buffer[0]); // Send the first element of the buffer array
-    } catch (error) {
+    } catch (error: any) {
       console.error("[API] Error serving file:", error);
-      next(error);
+      
+      // Handle client errors before passing to general error handler
+      if (error.message?.includes('not found') || error.message?.includes('No such file')) {
+        return res.status(404).json({ 
+          success: false, 
+          error: "File not found", 
+          code: 'FILE_NOT_FOUND' 
+        });
+      } else if (error.message?.includes('permission') || error.message?.includes('access')) {
+        return res.status(403).json({ 
+          success: false, 
+          error: "Permission denied accessing file", 
+          code: 'FILE_ACCESS_DENIED' 
+        });
+      }
+      
+      next(error); // Pass other errors to express error handler
     }
   });
 
@@ -268,18 +319,53 @@ export async function registerRoutes(app: Express) {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
-        return res.status(400).json({ success: false, error: "Invalid image ID" });
+        return res.status(400).json({ 
+          success: false, 
+          error: "Invalid image ID. Must be a number.", 
+          code: 'INVALID_ID_FORMAT' 
+        });
+      }
+
+      // First check if the image exists
+      const image = await storage.getImage(id);
+      if (!image) {
+        return res.status(404).json({ 
+          success: false, 
+          error: "Image not found", 
+          code: 'IMAGE_NOT_FOUND' 
+        });
       }
 
       const deleted = await storage.deleteImage(id);
       if (!deleted) {
-        return res.status(404).json({ success: false, error: "Image not found or could not be deleted" });
+        return res.status(500).json({ 
+          success: false, 
+          error: "Image found but could not be deleted", 
+          code: 'DELETE_FAILED' 
+        });
       }
 
       res.json({ success: true, data: { id } });
-    } catch (error) {
+    } catch (error: any) {
       console.error("[API] Failed to delete image:", error);
-      res.status(500).json({ success: false, error: "Failed to delete image" });
+      
+      let errorMessage = "Failed to delete image";
+      let errorCode = 'DELETE_ERROR';
+      
+      // Specific error handling
+      if (error.message?.includes('permission')) {
+        errorMessage = "Permission denied to delete image";
+        errorCode = 'DELETE_PERMISSION_DENIED';
+      } else if (error.message?.includes('not found')) {
+        errorMessage = "Image not found";
+        errorCode = 'IMAGE_NOT_FOUND';
+      }
+      
+      res.status(500).json({ 
+        success: false, 
+        error: errorMessage, 
+        code: errorCode 
+      });
     }
   });
 
