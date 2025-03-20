@@ -1,20 +1,20 @@
 # Image Management Service
 
-A robust image upload and management application designed to provide secure and efficient file storage with advanced web technologies.
+This is a simple image upload and management API designed to provide secure and efficient file storage for various prototype applications being built by Raymmar Tirado. 
 
-![Screenshot of the application](generated-icon.png)
+It's a sandbox API for uploading images and passing back a hosted URL to make media management simpler for different projects. You can clone this code, or copy the repl to implement this in your own projects. 
 
 ## Features
 
-- **Secure File Storage**: Upload and manage images with secure API key authentication
-- **Modern UI**: TypeScript/React frontend for a responsive and intuitive user experience
-- **Backend Security**: Express backend with API key authentication and request validation
-- **Efficient Storage**: Uses Replit Object Storage for reliable and scalable image storage
+- **File Storage**: Upload and manage images with secure API key authentication
+- **UI**: TypeScript/React frontend for a responsive and intuitive user experience
+- **Security**: Express backend with API key authentication and request validation
+- **Storage**: Uses Replit Object Storage for reliable and scalable image storage
 - **Copy-to-Clipboard**: Intelligent URL generation for sharing images in production environments
 
 ## Environment Configuration
 
-The application uses environment variables for configuration:
+The application uses simple environment variables for URL configuration:
 
 ```
 # .env file
