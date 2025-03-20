@@ -1,5 +1,6 @@
 import ImageUploader from "@/components/ImageUploader";
 import ImageGallery from "@/components/ImageGallery";
+import ApiKeyInput from "@/components/ApiKeyInput";
 
 export default function Home() {
   return (
@@ -14,6 +15,7 @@ export default function Home() {
 
         <div className="grid gap-8">
           <div className="max-w-xl mx-auto w-full">
+            <ApiKeyInput />
             <ImageUploader />
           </div>
 
