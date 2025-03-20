@@ -21,7 +21,7 @@ export default function ImageGallery() {
     isLoading, 
     error, 
     isError 
-  } = useQuery<ApiResponse<Image[]>>({
+  } = useQuery({
     queryKey: ["/api/images", apiKey], // Include apiKey in queryKey to refetch when it changes
     // Set cache options
     staleTime: 1000 * 30, // 30 seconds
@@ -29,11 +29,15 @@ export default function ImageGallery() {
     refetchOnMount: true,
     refetchOnWindowFocus: true,
     queryFn: async () => {
-      const headers: Record<string, string> = {};
-      if (apiKey) {
-        headers["x-api-key"] = apiKey;
+      try {
+        const headers: Record<string, string> = {};
+        if (apiKey) {
+          headers["x-api-key"] = apiKey;
+        }
+        return apiRequest<ApiResponse<Image[]>>("/api/images", { headers });
+      } catch (err) {
+        throw err;
       }
-      return apiRequest<ApiResponse<Image[]>>("/api/images", { headers });
     }
   });
 
