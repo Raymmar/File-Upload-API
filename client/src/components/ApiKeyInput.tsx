@@ -1,31 +1,33 @@
-import { useState, useEffect } from "react";
+import { useState, createContext, useContext } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
+import { Card, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff, Key } from "lucide-react";
 
-// localStorage key for saving the API key
-const API_KEY_STORAGE_KEY = "image_upload_api_key";
+// Create a context for the API key to share it across components
+type ApiKeyContextType = {
+  apiKey: string;
+  setApiKey: (key: string) => void;
+};
+
+export const ApiKeyContext = createContext<ApiKeyContextType>({
+  apiKey: "",
+  setApiKey: () => {},
+});
+
+// Custom hook to use the API key context
+export const useApiKey = () => useContext(ApiKeyContext);
 
 export default function ApiKeyInput() {
-  const [apiKey, setApiKey] = useState<string>("");
+  const { apiKey, setApiKey } = useApiKey();
   const [showApiKey, setShowApiKey] = useState<boolean>(false);
-  const [isSaved, setIsSaved] = useState<boolean>(false);
+  const [inputKey, setInputKey] = useState<string>(apiKey || "");
   const { toast } = useToast();
 
-  // Load API key from localStorage on component mount
-  useEffect(() => {
-    const savedApiKey = localStorage.getItem(API_KEY_STORAGE_KEY);
-    if (savedApiKey) {
-      setApiKey(savedApiKey);
-      setIsSaved(true);
-    }
-  }, []);
-
   const saveApiKey = () => {
-    if (!apiKey.trim()) {
+    if (!inputKey.trim()) {
       toast({
         title: "API Key Required",
         description: "Please enter an API key",
@@ -34,45 +36,27 @@ export default function ApiKeyInput() {
       return;
     }
 
-    localStorage.setItem(API_KEY_STORAGE_KEY, apiKey);
-    setIsSaved(true);
+    // Set API key in context (session only)
+    setApiKey(inputKey);
     
     toast({
-      title: "API Key Saved",
-      description: "Your API key has been saved to browser storage",
+      title: "API Key Applied",
+      description: "Your API key will be used for this session",
     });
   };
 
   const clearApiKey = () => {
-    localStorage.removeItem(API_KEY_STORAGE_KEY);
     setApiKey("");
-    setIsSaved(false);
+    setInputKey("");
     setShowApiKey(false);
     
     toast({
       title: "API Key Removed",
-      description: "Your API key has been removed from browser storage",
+      description: "Your API key has been cleared from this session",
     });
   };
 
-  // This function is for the XHR request interceptor to get the API key
-  // It will be exposed on the window object
-  useEffect(() => {
-    // Define a getter function that the XHR interceptor will call
-    const getApiKey = () => {
-      return localStorage.getItem(API_KEY_STORAGE_KEY) || "";
-    };
-    
-    // Expose the function to window so it can be called by XHR interceptor
-    // @ts-ignore - Adding custom property to window
-    window.getApiKey = getApiKey;
-    
-    // Clean up when component unmounts
-    return () => {
-      // @ts-ignore - Removing custom property from window
-      delete window.getApiKey;
-    };
-  }, []);
+  const isKeyActive = apiKey.trim().length > 0;
 
   return (
     <Accordion type="single" collapsible className="mb-6">
@@ -81,28 +65,26 @@ export default function ApiKeyInput() {
           <div className="flex items-center gap-2">
             <Key className="h-4 w-4" />
             <span>API Key Configuration</span>
-            {isSaved && (
+            {isKeyActive && (
               <span className="text-xs text-green-500 font-normal bg-green-50 px-2 py-0.5 rounded-full">
-                Saved
+                Active
               </span>
             )}
           </div>
         </AccordionTrigger>
         <AccordionContent>
           <Card className="border-none shadow-none">
-            <CardHeader className="p-0 pb-2">
-              <CardDescription>
+            <CardContent className="p-0 pb-2 pt-2">
+              <CardDescription className="mb-3">
                 Enter your API key to enable image uploads and management.
-                The key will be stored in your browser's local storage.
+                The key will only be stored for the current session.
               </CardDescription>
-            </CardHeader>
-            <CardContent className="p-0 pb-2">
               <div className="flex gap-2">
                 <div className="relative flex-1">
                   <Input
                     type={showApiKey ? "text" : "password"}
-                    value={apiKey}
-                    onChange={(e) => setApiKey(e.target.value)}
+                    value={inputKey}
+                    onChange={(e) => setInputKey(e.target.value)}
                     placeholder="Enter API key"
                     className="pr-10"
                   />
@@ -115,15 +97,15 @@ export default function ApiKeyInput() {
                   </button>
                 </div>
                 <Button onClick={saveApiKey} type="button">
-                  Save
+                  Apply
                 </Button>
               </div>
             </CardContent>
             <CardFooter className="p-0 flex justify-between items-center">
               <div className="text-xs text-muted-foreground">
-                {isSaved ? "API key is stored in your browser" : "No API key saved"}
+                {isKeyActive ? "API key is active for this session" : "No API key active"}
               </div>
-              {isSaved && (
+              {isKeyActive && (
                 <Button variant="outline" size="sm" onClick={clearApiKey}>
                   Clear
                 </Button>

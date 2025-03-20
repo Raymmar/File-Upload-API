@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
+import { useApiKey } from "./ApiKeyInput";
 import { ACCEPTED_IMAGE_TYPES, MAX_FILE_SIZE, type Image } from "@shared/schema";
 
 interface ApiResponse<T> {
@@ -19,6 +20,9 @@ export default function ImageUploader() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Get API key from context
+  const { apiKey } = useApiKey();
 
   const uploadMutation = useMutation({
     mutationFn: async (file: File): Promise<ApiResponse<Image>> => {
@@ -36,6 +40,12 @@ export default function ImageUploader() {
       // Wrap XHR in a promise
       const response = await new Promise<ApiResponse<Image>>((resolve, reject) => {
         xhr.open("POST", "/api/upload");
+        
+        // Set API key header if available from context
+        if (apiKey) {
+          xhr.setRequestHeader("x-api-key", apiKey);
+        }
+        
         xhr.onload = () => {
           if (xhr.status === 200) {
             resolve(JSON.parse(xhr.response));

@@ -3,6 +3,8 @@ import { type Image } from "@shared/schema";
 import { Card } from "@/components/ui/card";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
+import { useApiKey } from "./ApiKeyInput";
+import { apiRequest } from "@/lib/queryClient";
 
 interface ApiResponse<T> {
   success: boolean;
@@ -12,18 +14,27 @@ interface ApiResponse<T> {
 }
 
 export default function ImageGallery() {
+  const { apiKey } = useApiKey();
+  
   const { 
     data: response, 
     isLoading, 
     error, 
     isError 
   } = useQuery<ApiResponse<Image[]>>({
-    queryKey: ["/api/images"],
-    // Disable caching to always fetch fresh data
-    staleTime: 0,
-    cacheTime: 0,
+    queryKey: ["/api/images", apiKey], // Include apiKey in queryKey to refetch when it changes
+    // Set cache options
+    staleTime: 1000 * 30, // 30 seconds
+    gcTime: 1000 * 60 * 5, // 5 minutes
     refetchOnMount: true,
-    refetchOnWindowFocus: true
+    refetchOnWindowFocus: true,
+    queryFn: async () => {
+      const headers: Record<string, string> = {};
+      if (apiKey) {
+        headers["x-api-key"] = apiKey;
+      }
+      return apiRequest<ApiResponse<Image[]>>("/api/images", { headers });
+    }
   });
 
   if (isLoading) {
